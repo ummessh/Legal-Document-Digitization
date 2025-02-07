@@ -112,3 +112,14 @@ Text     0.261 0.504  0.244   0.097
 Thank you to Roboflow for Dataset annotation.
 We used the Signatures and stamps dataset and custom annotated it for the YOLO model, for it to detect the text regions better.
 
+**Citation**
+@inproceedings{iltur-2024,
+      title = "IL-TUR: Benchmark for Indian Legal Text Understanding and Reasoning",
+      author = "Joshi, Abhinav and Paul, Shounak and Sharma, Akshat and Goyal, Pawan and Ghosh, Saptarshi and Modi, Ashutosh"
+      booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+      month = aug,
+      year = "2024",
+      address = "Bangkok, Thailand",
+      publisher = "Association for Computational Linguistics",
+  }
+
