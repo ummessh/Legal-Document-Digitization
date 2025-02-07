@@ -1,3 +1,7 @@
+Here’s a refined version of your README file with improved structure, clarity, and additional details to make it more professional and comprehensive. I’ve also added some placeholders for sections you might want to expand in the future.
+
+---
+
 # Legal Document Digitization System
 
 An advanced document processing system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision and machine learning techniques.
@@ -22,7 +26,7 @@ This system automates the digitization of legal documents through a sophisticate
     - Signatures
 
 - **Advanced OCR Pipeline**
-  - Region-specific text extraction
+  - Region-specific text extraction using PyTesseract
   - Legal domain-specific error correction
   - Named Entity Recognition (NER) for structured data extraction
 
@@ -30,96 +34,144 @@ This system automates the digitization of legal documents through a sophisticate
   - SQLite database integration
   - Efficient document retrieval system
   - Full-text search capabilities
+  - Support for querying data using RAG (Retrieval-Augmented Generation) or SQL
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
+To run this project, you need the following dependencies:
+
 ```bash
-# Requirements
+# Core Requirements
 - Python 3.x
 - PyTorch
-- YOLOv8n
+- YOLOv8
 - OpenCV
-- Django
+- PyTesseract
+- SQLite
+- Django (for web interface)
 ```
-📖 Usage
-[Coming Soon]
 
-🛠️ Technical Architecture
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ummessh/Legal-Document-Digitization.git
+   cd Legal-Document-Digitization
+   ```
+
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Download the pre-trained YOLOv8 model weights (if available) or train your own model using the provided dataset.
+
+4. Configure the OCR and database settings in the `config.yaml` file.
+
+5. Run the preprocessing and digitization pipeline:
+   ```bash
+   python main.py --input_path /path/to/documents
+   ```
+
+---
+
+## 🛠️ Technical Architecture
+
 The system follows a modular pipeline architecture:
 
-Document Input → Accepts scanned legal documents in various formats
+1. **Document Input**: Accepts scanned legal documents in various formats (PDF, JPG, JPEG, etc.).
+2. **Preprocessing Module**:
+   - Image enhancement
+   - Deskewing and rotation correction
+   - Binarization for improved OCR accuracy
+3. **Text Region Detection**:
+   - Custom YOLOv8 model trained on legal documents
+   - Region classification and localization (text, tables, stamps, signatures)
+4. **OCR Processing**:
+   - Region-wise text extraction using PyTesseract
+   - Legal domain-specific error correction
+5. **Data Structuring**:
+   - Named Entity Recognition (NER) for extracting key legal entities
+   - Database storage in SQLite
+   - Indexing for efficient search and retrieval
+6. **Query Interface**:
+   - Support for SQL queries
+   - Integration with RAG for advanced querying
 
-**Preprocessing Module**
-Image enhancement
-Deskewing
-Binarization
+---
 
+Here’s the updated performance metrics section with the new data you provided, formatted consistently with the README:
 
-**Text Region Detection**
+---
 
-Custom YOLOv8 model trained on legal documents
-Region classification and localization
+## 📊 Performance Metrics
 
+### Current YOLOv8 Model Performance
 
-**OCR Processing**
+| Class      | Precision (P) | Recall (R) | mAP50  | mAP50-95 |
+|------------|---------------|------------|--------|----------|
+| **All**    | 0.641         | 0.503      | 0.481  | 0.324    |
+| Signature  | 0.429         | 0.370      | 0.305  | 0.171    |
+| Stamp      | 0.898         | 0.594      | 0.718  | 0.598    |
+| Table      | 0.762         | 0.529      | 0.528  | 0.359    |
+| Text       | 0.476         | 0.519      | 0.372  | 0.169    |
 
-Region-wise text extraction
-Legal domain-specific error correction
+### Training Details
+- **Epochs**: 255
+- **Training Time**: 1.452 hours
+- **Model Size**: 22.5MB (optimizer stripped)
+- **Hardware**: Tesla T4 GPU (15GB VRAM)
+- **Framework**: Ultralytics YOLOv8, Python 3.10.12, PyTorch 2.5.1+cu121
+- **Speed**:
+  - Preprocess: 0.2ms per image
+  - Inference: 5.2ms per image
+  - Postprocess: 0.8ms per image
 
+---
+## 🔄 Current Status
 
-**Data Structuring**
+- **Completed**:
+  - Preprocessing pipeline implementation
+  - YOLOv8 model training
+  - OCR integration with PyTesseract
+  - Database schema design
+- **In Progress**:
+  - Error correction model
+  - NER implementation
+  - Web interface development using Django
+  - Integration with RAG for advanced querying
+  - Performance optimization for large-scale document processing
 
-Named Entity Recognition
-Database storage
-Indexing for search
+---
 
+## 📝 License
 
+This project is licensed under the **Apache 2.0 License**. See the [LICENSE](https://github.com/ummessh/Legal-Document-Digitization/blob/main/LICENSE) file for details.
 
-**🔄 Current Status**
+---
 
- Preprocessing pipeline implementation
- YOLOv8 model training (Accuracy metrics available)
- OCR integration
- Error correction model
- NER implementation
- Database schema design
- Web interface development
+## 🙏 Acknowledgments
 
-**📊 Performance Metrics**
-Current YOLOv8 Model Performance:
+- **Roboflow** for dataset annotation tools.
+- **IL-TUR Benchmark** for providing domain context for NER in Indian legal documents.
+- **YOLOv8** and **PyTesseract** communities for their excellent tools and documentation.
 
-mAP50: 0.496
-mAP50-95: 0.368
+### Citation for NER Domain Context
 
-Class-wise Performance:
-```
-CopyClass      P     R    mAP50  mAP50-95
-All      0.549 0.568  0.496   0.368
-Signature 0.381 0.414  0.296   0.160
-Stamp    0.932 0.575  0.736   0.591
-Table    0.620 0.780  0.706   0.624
-Text     0.261 0.504  0.244   0.097
-```
-🤝 Contributing
-[Coming Soon]
+WE are considering the following work for refernece/research for our NER module.
 
-📝 License
-[Apache 2.0](https://github.com/PhoenixAlpha23/Legal-Document-Digitization/blob/main/LICENSE)
-
-🙏 Acknowledgments
-Thank you to Roboflow for Dataset annotation.
-We used the Signatures and stamps dataset and custom annotated it for the YOLO model, for it to detect the text regions better.
-
-**Citation**
+```bibtex
 @inproceedings{iltur-2024,
-      title = "IL-TUR: Benchmark for Indian Legal Text Understanding and Reasoning",
-      author = "Joshi, Abhinav and Paul, Shounak and Sharma, Akshat and Goyal, Pawan and Ghosh, Saptarshi and Modi, Ashutosh"
-      booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
-      month = aug,
-      year = "2024",
-      address = "Bangkok, Thailand",
-      publisher = "Association for Computational Linguistics",
-  }
-
+  title = "IL-TUR: Benchmark for Indian Legal Text Understanding and Reasoning",
+  author = "Joshi, Abhinav and Paul, Shounak and Sharma, Akshat and Goyal, Pawan and Ghosh, Saptarshi and Modi, Ashutosh",
+  booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+  month = aug,
+  year = "2024",
+  address = "Bangkok, Thailand",
+  publisher = "Association for Computational Linguistics",
+}
+```
