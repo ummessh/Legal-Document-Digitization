@@ -104,14 +104,11 @@ Text     0.261 0.504  0.244   0.097
 ```
 🤝 Contributing
 [Coming Soon]
+
 📝 License
-[Apache 2.0](https://github.com/PhoenixAlpha23/Legal-Document-Digitization/License)
+[Apache 2.0](https://github.com/PhoenixAlpha23/Legal-Document-Digitization/blob/main/LICENSE)
+
 🙏 Acknowledgments
+Thank you to Roboflow for Dataset annotation.
+We used the Signatures and stamps dataset and custom annotated it for the YOLO model, for it to detect the text regions better.
 
-Mention any datasets used
-Reference any key papers or resources
-Credit to tools and libraries used
-
-📧 Contact
-Your Name - [Your Email/LinkedIn]
-Project Link: [https://github.com/yourusername/legal-document-digitizer](https://github.com/PhoenixAlpha23/Legal-Document-Digitization)
