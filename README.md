@@ -157,6 +157,9 @@ This project is licensed under the **Apache 2.0 License**. See the [LICENSE](htt
 ## 🙏 Acknowledgments
 
 - **Roboflow** for dataset annotation tools.
+- <a href="https://universe.roboflow.com/major-a0zsb/documents-dataset-yygxz">
+    <img src="https://app.roboflow.com/images/download-dataset-badge.svg"></img>
+</a>
 - **IL-TUR Benchmark** for providing domain context for NER in Indian legal documents.
 - **YOLOv8** and **PyTesseract** communities for their excellent tools and documentation.
 
