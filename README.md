@@ -1,7 +1,3 @@
-Here’s a refined version of your README file with improved structure, clarity, and additional details to make it more professional and comprehensive. I’ve also added some placeholders for sections you might want to expand in the future.
-
----
-
 # Legal Document Digitization System
 
 An advanced document processing system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision and machine learning techniques.
