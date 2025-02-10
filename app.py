@@ -26,11 +26,12 @@ except Exception as e:
 
 # Load mT5 Model for Text Correction
 try:
-    mt5_model = MT5ForConditionalGeneration.from_pretrained(Config.MT5_MODEL_PATH)  # Use Config.MT5_MODEL_PATH
+    mt5_model = MT5ForConditionalGeneration.from_pretrained(Config.MT5_MODEL_PATH)
     mt5_tokenizer = MT5Tokenizer.from_pretrained(Config.MT5_MODEL_PATH)
 except Exception as e:
-    st.error(f"Failed to load mT5 model: {e}")
-    st.stop()
+    st.warning(f"Failed to load local mT5 model: {e}. Falling back to default 'google/mt5-small'.")
+    mt5_model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
+    mt5_tokenizer = MT5Tokenizer.from_pretrained("google/mt5-small")
 
 def apply_mt5_correction(text):
     """Apply mT5 text correction to the input text."""
