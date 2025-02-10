@@ -8,6 +8,6 @@ PyMuPDF
 pdf2image
 torch==2.2.1 --extra-index-url https://download.pytorch.org/whl/cpu
 torchvision==0.17.1 --extra-index-url https://download.pytorch.org/whl/cpu
-ultralytics==8.0.196  # Specific version for better compatibility
+ultralytics==8.0.196
 sentencepiece
 transformers==4.36.0
