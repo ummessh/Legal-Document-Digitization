@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
-from OCR.ocr_processor import OCRProcessor
+from ocr.ocr_processor import OCRProcessor
 from models.yolo_detector import YOLODetector
 from utils.config import Config
 import json
