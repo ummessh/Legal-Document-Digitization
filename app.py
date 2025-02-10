@@ -86,6 +86,7 @@ if uploaded_file is not None:
                     cursor.execute(
                         "INSERT INTO ocr_results (bbox, text) VALUES (?, ?)",
                         (str(item['bbox']), item['corrected_text'])
+                    )
             conn.commit()
             conn.close()
             st.success("Text successfully extracted, corrected, and stored in the database.")
