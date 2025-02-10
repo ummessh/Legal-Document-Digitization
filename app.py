@@ -5,29 +5,29 @@ import torch
 from PIL import Image
 from ocr.ocr_processor import OCRProcessor
 from models.yolo_detector import YOLODetector
-from utils.config import Config  # Ensure Config is properly defined
+from utils.config import Config  # Import Config from the correct module
 import json
 import sqlite3
 from transformers import MT5ForConditionalGeneration, MT5Tokenizer
 
 # Initialize YOLO model
 try:
-    detector = YOLODetector(Config.model_path)
+    detector = YOLODetector(Config.MODEL_PATH)  # Use Config.MODEL_PATH
 except Exception as e:
     st.error(f"Failed to initialize YOLO detector: {e}")
     st.stop()
 
 # Initialize OCR processor
 try:
-    ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+    ocr_processor = OCRProcessor(language=Config.OCR_LANGUAGES, psm=Config.OCR_PSM)  # Use Config.OCR_LANGUAGES and Config.OCR_PSM
 except Exception as e:
     st.error(f"Failed to initialize OCR processor: {e}")
     st.stop()
 
 # Load mT5 Model for Text Correction
 try:
-    mt5_model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
-    mt5_tokenizer = MT5Tokenizer.from_pretrained("google/mt5-small")
+    mt5_model = MT5ForConditionalGeneration.from_pretrained(Config.MT5_MODEL_PATH)  # Use Config.MT5_MODEL_PATH
+    mt5_tokenizer = MT5Tokenizer.from_pretrained(Config.MT5_MODEL_PATH)
 except Exception as e:
     st.error(f"Failed to load mT5 model: {e}")
     st.stop()
@@ -78,8 +78,9 @@ if uploaded_file is not None:
 
         # Save to SQLite Database
         try:
-            conn = sqlite3.connect(Config.db_path)
+            conn = sqlite3.connect(Config.DB_PATH)  # Use Config.DB_PATH
             cursor = conn.cursor()
+            cursor.execute(Config.TABLE_CREATION_QUERY)  # Create table if it doesn't exist
             for item in extracted_data:
                 if item['type'] in ['text', 'table']:
                     cursor.execute(
