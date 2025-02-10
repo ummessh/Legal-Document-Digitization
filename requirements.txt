@@ -12,3 +12,5 @@ sqlite3
 torch
 torchvision
 ultralytics  
+sentencepiece
+transformers
