@@ -6,8 +6,8 @@ Pillow
 numpy
 PyMuPDF
 pdf2image
-torch==2.1.0 --index-url https://download.pytorch.org/whl/cpu
-torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cpu
+torch==2.2.1  # Updated to latest stable version
+torchvision==0.17.1  # Updated to match new torch version
 ultralytics==8.0.0
 sentencepiece
 transformers==4.36.0
