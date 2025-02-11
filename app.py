@@ -2,6 +2,9 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)  # Suppress FutureWarnings
 warnings.filterwarnings("ignore", category=UserWarning)    # Suppress UserWarnings
 
+import torch
+torch.set_default_device('cpu')  # Force PyTorch to use CPU
+
 import streamlit as st
 import numpy as np
 import sqlite3
@@ -49,7 +52,7 @@ except Exception as e:
     st.stop()
 
 try:
-    logger.info("Initializing OCR processor...")
+    logger.info("Starting OCR processor initialization...")
     ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
     logger.info("OCR processor initialized successfully.")
 except Exception as e:
