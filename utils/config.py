@@ -8,7 +8,7 @@ class Config:
     DB_PATH = os.path.join(BASE_DIR, "../database/ocr_results.db")
 
     # YOLO Model
-    MODEL_PATH = os.path.join(MODEL_DIR, "best.pt")
+    model_path = os.path.join(MODEL_DIR, "best.pt")
     CONFIDENCE_THRESHOLD = 0.5
     IOU_THRESHOLD = 0.4
 
