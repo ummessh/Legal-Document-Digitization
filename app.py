@@ -14,10 +14,25 @@ import os
 import subprocess
 import logging
 import sys
+import signal
+from contextlib import contextmanager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Timeout mechanism
+@contextmanager
+def timeout(time):
+    signal.signal(signal.SIGALRM, raise_timeout)
+    signal.alarm(time)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+
+def raise_timeout(signum, frame):
+    raise TimeoutError
 
 # Configuration class
 class Config:
@@ -73,8 +88,13 @@ except Exception as e:
 
 try:
     logger.info("Starting OCR processor initialization...")
-    ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+    with timeout(10):  # 10-second timeout
+        ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
     logger.info("OCR processor initialized successfully.")
+except TimeoutError:
+    logger.error("OCR processor initialization timed out.")
+    st.error("OCR processor initialization took too long. Please try again.")
+    st.stop()
 except Exception as e:
     logger.error(f"Error initializing OCR processor: {e}")
     st.error("Failed to initialize OCR processor. Please check the logs.")
@@ -121,4 +141,13 @@ if uploaded_file:
 
         # Insert data into the database
         for item in extracted_data:
-            if item['text']:  # Only
+            if item['text']:  # Only store valid text
+                cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
+
+        conn.commit()
+        conn.close()
+
+        st.success("Corrected text stored in database.")
+    except Exception as e:
+        logger.error(f"Error processing file: {e}")
+        st.error("An error occurred while processing the file. Please check the logs.")
