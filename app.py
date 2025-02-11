@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Configuration class
 class Config:
-    # Path to YOLO model (use a smaller model for deployment)
-    model_path = "./models/yolov8n.pt"  # Updated to YOLOv8
+    # Path to YOLO model (updated to YOLOv8)
+    model_path = "./models/yolov8n.pt"
 
     # OCR settings
     ocr_languages = "eng+hin+mar"  # Languages for OCR
