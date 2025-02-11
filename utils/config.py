@@ -13,7 +13,7 @@ class Config:
     IOU_THRESHOLD = 0.4
 
     # OCR Settings
-    OCR_LANGUAGES = "eng+hin+mar"  # Limit OCR to these languages
+    ocr_languages = "eng+hin+mar"  # Limit OCR to these languages
     OCR_PSM = 6  # Default Page Segmentation Mode
 
     # IndicBART-based Text Correction
