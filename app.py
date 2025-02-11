@@ -42,11 +42,19 @@ except ImportError as e:
 try:
     logger.info("Initializing YOLO model...")
     detector = YOLODetector(Config.model_path)
+    logger.info("YOLO model initialized successfully.")
+except Exception as e:
+    logger.error(f"Error initializing YOLO model: {e}")
+    st.error("Failed to initialize YOLO model. Please check the logs.")
+    st.stop()
+
+try:
     logger.info("Initializing OCR processor...")
     ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+    logger.info("OCR processor initialized successfully.")
 except Exception as e:
-    logger.error(f"Error initializing models: {e}")
-    st.error("Failed to initialize models. Please check the logs.")
+    logger.error(f"Error initializing OCR processor: {e}")
+    st.error("Failed to initialize OCR processor. Please check the logs.")
     st.stop()
 
 # Streamlit app
