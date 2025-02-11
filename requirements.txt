@@ -12,4 +12,4 @@ ultralytics==8.0.196
 sentencepiece==0.2.0
 transformers==4.36.0
 huggingface_hub==0.20.0
-ultralytics==8.0.0
+ultralytics==8.0.196
