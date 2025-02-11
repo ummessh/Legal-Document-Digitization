@@ -3,8 +3,6 @@ warnings.filterwarnings("ignore", category=FutureWarning)  # Suppress FutureWarn
 warnings.filterwarnings("ignore", category=UserWarning)    # Suppress UserWarnings
 
 import torch
-torch.set_default_device('cpu')  # Force PyTorch to use CPU
-
 import streamlit as st
 import numpy as np
 import sqlite3
@@ -14,30 +12,15 @@ import os
 import subprocess
 import logging
 import sys
-import signal
-from contextlib import contextmanager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Timeout mechanism
-@contextmanager
-def timeout(time):
-    signal.signal(signal.SIGALRM, raise_timeout)
-    signal.alarm(time)
-    try:
-        yield
-    finally:
-        signal.signal(signal.SIGALRM, signal.SIG_IGN)
-
-def raise_timeout(signum, frame):
-    raise TimeoutError
-
 # Configuration class
 class Config:
     # Path to YOLO model (use a smaller model for deployment)
-    model_path = "./models/yolov5s.pt"
+    model_path = "./models/yolov8n.pt"  # Updated to YOLOv8
 
     # OCR settings
     ocr_languages = "eng+hin+mar"  # Languages for OCR
@@ -88,13 +71,8 @@ except Exception as e:
 
 try:
     logger.info("Starting OCR processor initialization...")
-    with timeout(10):  # 10-second timeout
-        ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+    ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
     logger.info("OCR processor initialized successfully.")
-except TimeoutError:
-    logger.error("OCR processor initialization timed out.")
-    st.error("OCR processor initialization took too long. Please try again.")
-    st.stop()
 except Exception as e:
     logger.error(f"Error initializing OCR processor: {e}")
     st.error("Failed to initialize OCR processor. Please check the logs.")
