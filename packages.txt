@@ -1,6 +1,7 @@
 libgl1
 tesseract-ocr
 libtesseract-dev
-tesseract-ocr-hin
 tesseract-ocr-eng
+tesseract-ocr-hin
 tesseract-ocr-mar
+poppler-utils
