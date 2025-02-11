@@ -3,41 +3,86 @@ import numpy as np
 import sqlite3
 import json
 from PIL import Image
-from models.yolo_detector import YOLODetector
-from ocr.ocr_processor import OCRProcessor
-from utils.config import Config
+import os
+import subprocess
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Install system dependencies if not found (for Streamlit Community Cloud)
+if not os.path.exists('/usr/bin/tesseract'):
+    logger.info("Installing Tesseract-OCR...")
+    subprocess.run(['apt-get', 'update'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['apt-get', 'install', '-y', 'tesseract-ocr'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+# Import custom modules
+try:
+    from models.yolo_detector import YOLODetector
+    from ocr.ocr_processor import OCRProcessor
+    from utils.config import Config
+except ImportError as e:
+    logger.error(f"Error importing custom modules: {e}")
+    st.error("Failed to load required modules. Please check the logs.")
+    st.stop()
 
 # Initialize models
-detector = YOLODetector(Config.model_path)
-ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+try:
+    detector = YOLODetector(Config.model_path)
+    ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
+except Exception as e:
+    logger.error(f"Error initializing models: {e}")
+    st.error("Failed to initialize models. Please check the logs.")
+    st.stop()
 
+# Streamlit app
 st.title("Legal Document Digitization")
 
+# File uploader
 uploaded_file = st.file_uploader("Upload an Image or PDF", type=["jpg", "jpeg", "png", "pdf"])
 
 if uploaded_file:
-    image = Image.open(uploaded_file)
-    image = np.array(image)
+    try:
+        # Open the uploaded file
+        image = Image.open(uploaded_file)
+        image = np.array(image)
 
-    # Run YOLO detection
-    detections = detector.detect(image)
+        # Run YOLO detection
+        logger.info("Running YOLO detection...")
+        detections = detector.detect(image)
 
-    # OCR + Error Correction
-    extracted_data = ocr_processor.process_detections(image, detections)
+        # OCR + Error Correction
+        logger.info("Running OCR and error correction...")
+        extracted_data = ocr_processor.process_detections(image, detections)
 
-    # Display corrected text
-    st.subheader("Corrected Extracted Text:")
-    st.json(extracted_data)
+        # Display corrected text
+        st.subheader("Corrected Extracted Text:")
+        st.json(extracted_data)
 
-    # Store in database
-    conn = sqlite3.connect(Config.db_path)
-    cursor = conn.cursor()
-    
-    for item in extracted_data:
-        if item['text']:  # Only store valid text
-            cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
-    
-    conn.commit()
-    conn.close()
+        # Store in database
+        logger.info("Storing results in database...")
+        conn = sqlite3.connect(Config.db_path)
+        cursor = conn.cursor()
 
-    st.success("Corrected text stored in database.")
+        # Create table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ocr_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bbox TEXT,
+                text TEXT
+            )
+        """)
+
+        # Insert data into the database
+        for item in extracted_data:
+            if item['text']:  # Only store valid text
+                cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
+
+        conn.commit()
+        conn.close()
+
+        st.success("Corrected text stored in database.")
+    except Exception as e:
+        logger.error(f"Error processing file: {e}")
+        st.error("An error occurred while processing the file. Please check the logs.")
