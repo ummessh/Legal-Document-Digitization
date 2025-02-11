@@ -14,7 +14,7 @@ class Config:
 
     # OCR Settings
     ocr_languages = "eng+hin+mar"  # Limit OCR to these languages
-    OCR_PSM = 6  # Default Page Segmentation Mode
+    ocr_psm = 6  # Default Page Segmentation Mode
 
     # IndicBART-based Text Correction
     USE_INDICBART_CORRECTION = True  # Enable or disable IndicBART correction
