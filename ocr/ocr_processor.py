@@ -1,36 +1,38 @@
+from transformers import pipeline
 import pytesseract
-import json
+import logging
 
 class OCRProcessor:
-    def __init__(self, language='eng+hin+mar', psm=6):
-        """
-        Initializes the OCR processor with specified languages and PSM mode.
-        """
+    def __init__(self, language="eng", psm=6):
         self.language = language
         self.psm = psm
+        self.corrector = pipeline("text2text-generation", model="ai4bharat/IndicBART")
 
     def extract_text(self, image):
-        """
-        Extracts text from the given image using PyTesseract.
-        """
-        config = f"--oem 3 --psm {self.psm}"
+        """Extracts text from an image using Tesseract OCR."""
+        config = f"--oem 3 --psm {self.psm} preserve_interword_spaces=1"
         text = pytesseract.image_to_string(image, config=config, lang=self.language)
         return text.strip()
 
+    def correct_text(self, text):
+        """Corrects OCR errors using IndicBART for Hindi, Marathi, and English."""
+        if not text.strip():
+            return text  # Return unchanged if empty
+
+        prompt = f"Fix OCR errors in: {text}"
+        corrected_output = self.corrector(prompt, max_length=512, truncation=True)
+        corrected_text = corrected_output[0]['generated_text']
+        
+        return corrected_text
+
     def process_detections(self, image, detections):
-        """
-        Processes YOLO detections and applies OCR where needed.
-        """
-        extracted_data = []
-
+        """Runs OCR on detected text regions and applies IndicBART correction."""
+        results = []
         for det in detections:
-            x1, y1, x2, y2 = map(int, det['bbox'])
-            roi = image[y1:y2, x1:x2]
-
-            if det['class'] in [0, 1]:  # Text or Table
-                text = self.extract_text(roi)
-                extracted_data.append({'type': 'text' if det['class'] == 0 else 'table', 'bbox': det['bbox'], 'text': text})
-            else:  # Signatures or Stamps
-                extracted_data.append({'type': 'signature' if det['class'] == 2 else 'stamp', 'bbox': det['bbox'], 'present': True})
-
-        return json.dumps(extracted_data, indent=2)
+            x, y, w, h = det['bbox']
+            cropped_img = image[y:y+h, x:x+w]
+            raw_text = self.extract_text(cropped_img)
+            corrected_text = self.correct_text(raw_text)
+            results.append({'bbox': (x, y, w, h), 'text': corrected_text})
+        
+        return results
