@@ -19,6 +19,27 @@ import sys
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Configuration class
+class Config:
+    # Path to YOLO model (use a smaller model for deployment)
+    model_path = "./models/yolov5s.pt"
+
+    # OCR settings
+    ocr_languages = "eng+hin+mar"  # Languages for OCR
+    ocr_psm = 6                    # Page segmentation mode
+
+    # Path to SQLite database
+    db_path = "./data/ocr.db"
+
+    # Ensure the required directories exist
+    @staticmethod
+    def ensure_directories_exist():
+        os.makedirs(os.path.dirname(Config.model_path), exist_ok=True)
+        os.makedirs(os.path.dirname(Config.db_path), exist_ok=True)
+
+# Ensure directories exist
+Config.ensure_directories_exist()
+
 # Install system dependencies if not found (for Streamlit Community Cloud)
 if not os.path.exists('/usr/bin/tesseract'):
     logger.info("Installing Tesseract-OCR...")
@@ -35,7 +56,6 @@ try:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # Add project root to Python path
     from models.yolo_detector import YOLODetector
     from ocr.ocr_processor import OCRProcessor
-    from utils.config import Config
 except ImportError as e:
     logger.error(f"Error importing custom modules: {e}")
     st.error("Failed to load required modules. Please check the logs.")
@@ -101,13 +121,4 @@ if uploaded_file:
 
         # Insert data into the database
         for item in extracted_data:
-            if item['text']:  # Only store valid text
-                cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
-
-        conn.commit()
-        conn.close()
-
-        st.success("Corrected text stored in database.")
-    except Exception as e:
-        logger.error(f"Error processing file: {e}")
-        st.error("An error occurred while processing the file. Please check the logs.")
+            if item['text']:  # Only
