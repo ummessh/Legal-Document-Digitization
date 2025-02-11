@@ -1,98 +1,43 @@
 import streamlit as st
-import cv2
 import numpy as np
-import torch
-from PIL import Image
-from ocr.ocr_processor import OCRProcessor
-from models.yolo_detector import YOLODetector
-from utils.config import Config  # Import Config from the correct module
-import json
 import sqlite3
-from transformers import MT5ForConditionalGeneration, MT5Tokenizer
+import json
+from PIL import Image
+from models.yolo_detector import YOLODetector
+from ocr.ocr_processor import OCRProcessor
+from utils.config import Config
 
-# Initialize YOLO model
-try:
-    detector = YOLODetector(Config.MODEL_PATH)  # Use Config.MODEL_PATH
-except Exception as e:
-    st.error(f"Failed to initialize YOLO detector: {e}")
-    st.stop()
+# Initialize models
+detector = YOLODetector(Config.model_path)
+ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
 
-# Initialize OCR processor
-try:
-    ocr_processor = OCRProcessor(language=Config.OCR_LANGUAGES, psm=Config.OCR_PSM)  # Use Config.OCR_LANGUAGES and Config.OCR_PSM
-except Exception as e:
-    st.error(f"Failed to initialize OCR processor: {e}")
-    st.stop()
-
-# Load mT5 Model for Text Correction
-try:
-    mt5_model = MT5ForConditionalGeneration.from_pretrained(Config.MT5_MODEL_PATH)
-    mt5_tokenizer = MT5Tokenizer.from_pretrained(Config.MT5_MODEL_PATH)
-except Exception as e:
-    st.warning(f"Failed to load local mT5 model: {e}. Falling back to default 'google/mt5-small'.")
-    mt5_model = MT5ForConditionalGeneration.from_pretrained("google/mt5-small")
-    mt5_tokenizer = MT5Tokenizer.from_pretrained("google/mt5-small")
-
-def apply_mt5_correction(text):
-    """Apply mT5 text correction to the input text."""
-    try:
-        input_ids = mt5_tokenizer("Correct: " + text, return_tensors="pt").input_ids
-        output_ids = mt5_model.generate(input_ids, max_length=512)
-        return mt5_tokenizer.decode(output_ids[0], skip_special_tokens=True)
-    except Exception as e:
-        st.warning(f"Text correction failed: {e}")
-        return text  # Return original text if correction fails
-
-# Streamlit UI
 st.title("Legal Document Digitization")
 
 uploaded_file = st.file_uploader("Upload an Image or PDF", type=["jpg", "jpeg", "png", "pdf"])
 
-if uploaded_file is not None:
-    try:
-        # Read the uploaded file
-        image = Image.open(uploaded_file)
-        image = np.array(image)
+if uploaded_file:
+    image = Image.open(uploaded_file)
+    image = np.array(image)
 
-        # Run YOLO model for object detection
-        detections = detector.detect(image)
-        if not detections:
-            st.warning("No objects detected in the image.")
-        else:
-            st.success(f"Detected {len(detections)} objects.")
+    # Run YOLO detection
+    detections = detector.detect(image)
 
-        # Process detections for OCR
-        extracted_data = ocr_processor.process_detections(image, detections)
-        if not extracted_data:
-            st.warning("No text or tables extracted.")
-        else:
-            st.success(f"Extracted {len(extracted_data)} items.")
+    # OCR + Error Correction
+    extracted_data = ocr_processor.process_detections(image, detections)
 
-        # Apply mT5 Correction to extracted text
-        for item in extracted_data:
-            if item['type'] in ['text', 'table']:
-                item['corrected_text'] = apply_mt5_correction(item['text'])
+    # Display corrected text
+    st.subheader("Corrected Extracted Text:")
+    st.json(extracted_data)
 
-        # Display corrected text
-        st.subheader("Corrected Text:")
-        st.json(extracted_data)
+    # Store in database
+    conn = sqlite3.connect(Config.db_path)
+    cursor = conn.cursor()
+    
+    for item in extracted_data:
+        if item['text']:  # Only store valid text
+            cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
+    
+    conn.commit()
+    conn.close()
 
-        # Save to SQLite Database
-        try:
-            conn = sqlite3.connect(Config.DB_PATH)  # Use Config.DB_PATH
-            cursor = conn.cursor()
-            cursor.execute(Config.TABLE_CREATION_QUERY)  # Create table if it doesn't exist
-            for item in extracted_data:
-                if item['type'] in ['text', 'table']:
-                    cursor.execute(
-                        "INSERT INTO ocr_results (bbox, text) VALUES (?, ?)",
-                        (str(item['bbox']), item['corrected_text'])
-                    )
-            conn.commit()
-            conn.close()
-            st.success("Text successfully extracted, corrected, and stored in the database.")
-        except Exception as e:
-            st.error(f"Failed to save data to the database: {e}")
-
-    except Exception as e:
-        st.error(f"An error occurred while processing the file: {e}")
+    st.success("Corrected text stored in database.")
