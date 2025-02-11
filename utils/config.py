@@ -18,7 +18,7 @@ class Config:
     
     # mT5-based Text Correction
     USE_MT5_CORRECTION = True  # Enable or disable mT5 correction
-    MT5_MODEL_PATH = os.path.join(BASE_DIR, "../models/mt5-correction")  # Path to fine-tuned mT5 model
+    MT5_MODEL_PATH = os.path.join(MODEL_DIR, "mt5-correction")  # Path to mT5 model folder
     
     # Database
     TABLE_CREATION_QUERY = """

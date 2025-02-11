@@ -2,6 +2,9 @@ import torch
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import os
+
+os.environ['ULTRALYTICS_SKIP_SIGNAL_HANDLERS'] = '1'
 
 class YOLODetector:
     def __init__(self, model_path, conf_threshold=0.2, iou_threshold=0.3):
