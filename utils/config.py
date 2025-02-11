@@ -6,20 +6,20 @@ class Config:
     MODEL_DIR = os.path.join(BASE_DIR, "../models")
     OCR_DIR = os.path.join(BASE_DIR, "../ocr")
     DB_PATH = os.path.join(BASE_DIR, "../database/ocr_results.db")
-    
+
     # YOLO Model
     MODEL_PATH = os.path.join(MODEL_DIR, "best.pt")
     CONFIDENCE_THRESHOLD = 0.5
     IOU_THRESHOLD = 0.4
-    
+
     # OCR Settings
-    OCR_LANGUAGES = "eng+hin+mar"
+    OCR_LANGUAGES = "eng+hin+mar"  # Limit OCR to these languages
     OCR_PSM = 6  # Default Page Segmentation Mode
-    
-    # mT5-based Text Correction
-    USE_MT5_CORRECTION = True  # Enable or disable mT5 correction
-    MT5_MODEL_PATH = os.path.join(MODEL_DIR, "mt5-correction")  # Path to mT5 model folder
-    
+
+    # IndicBART-based Text Correction
+    USE_INDICBART_CORRECTION = True  # Enable or disable IndicBART correction
+    INDICBART_MODEL = "ai4bharat/IndicBART"  # IndicBART model from Hugging Face
+
     # Database
     TABLE_CREATION_QUERY = """
     CREATE TABLE IF NOT EXISTS ocr_results (
