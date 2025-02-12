@@ -5,7 +5,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 import torch
 import streamlit as st
 import numpy as np
-import sqlite3
 import json
 from PIL import Image
 import os
@@ -14,27 +13,12 @@ import logging
 import sys
 import gc
 
-# Set up logging (improved)
+from utils.config import Config  # Import the Config class
+from utils.database_handler import store_ocr_result  # Import the database function
+
+# Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
-
-# Configuration class (using st.cache_data for database path)
-class Config:
-    model_path = "./models/yolov8n.pt"  # Your fixed model path
-    ocr_languages = "eng+hin+mar"
-    ocr_psm = 6
-
-    @staticmethod
-    @st.cache_data
-    def get_db_path():
-        return "./data/ocr.db"
-
-    @staticmethod
-    def ensure_directories_exist():
-        os.makedirs(os.path.dirname(Config.model_path), exist_ok=True)
-        os.makedirs(os.path.dirname(Config.get_db_path()), exist_ok=True)
-
-Config.ensure_directories_exist()
 
 # Install system dependencies (using st.cache_resource)
 @st.cache_resource
@@ -46,12 +30,12 @@ def install_tesseract():
             subprocess.run(['apt-get', 'install', '-y', 'tesseract-ocr'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error installing system dependencies: {e}")
+            logger.error(f"Error installing Tesseract: {e}")
             return False
     return True
 
 if not install_tesseract():
-    st.error("Failed to install system dependencies. Please check the logs.")
+    st.error("Failed to install Tesseract. Please check the logs.")
     st.stop()
 
 # Import custom modules (improved path handling)
@@ -65,12 +49,12 @@ except ImportError as e:
     st.error(f"Failed to load required modules: {e}")
     st.stop()
 
-# Initialize models (using st.cache_resource, using yolov8n directly)
+# Initialize models (using st.cache_resource)
 @st.cache_resource
 def load_detector():
-    logger.info("Initializing YOLOv8n model...")
+    logger.info("Initializing YOLO model...")
     try:
-        detector = YOLODetector(Config.model_path)  # Use your fixed model path
+        detector = YOLODetector(Config.model_path)
         logger.info("YOLO model initialized successfully.")
         return detector
     except Exception as e:
@@ -90,6 +74,7 @@ def load_ocr_processor(language, psm):
         st.error(f"Failed to initialize OCR processor: {e}")
         st.stop()
 
+
 # Streamlit app
 st.title("Legal Document Digitization")
 
@@ -107,25 +92,19 @@ if uploaded_file:
             detections = detector.detect(image)
             extracted_data = ocr_processor.process_detections(image, detections)
 
-        st.subheader("Corrected Extracted Text:")
-        st.json(extracted_data)
+        st.subheader("Extracted Data:")
+        st.json(extracted_data)  # Display extracted data as JSON
 
-        db_path = Config.get_db_path()
-        with sqlite3.connect(db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS ocr_results (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    bbox TEXT,
-                    text TEXT
-                )
-            """)
-            for item in extracted_data:
-                if item.get('text'):
-                    cursor.execute("INSERT INTO ocr_results (bbox, text) VALUES (?, ?)", (str(item['bbox']), item['text']))
-            conn.commit()
+        for item in extracted_data:
+            if item.get('text'):  # Check if 'text' key exists
+                corrected_text = item.get('corrected_text')
+                success = store_ocr_result(Config.DB_PATH, str(item['bbox']), item['text'], corrected_text)
+                if not success:
+                    st.error("Error storing OCR result. Check logs.")
+            else:
+                logger.warning(f"No 'text' found in item: {item}") # Log if 'text' is missing
 
-        st.success("Corrected text stored in database.")
+        st.success("Data stored in database.")
 
         del image
         gc.collect()
@@ -133,4 +112,4 @@ if uploaded_file:
     except Exception as e:
         logger.error(f"Error processing file: {e}")
         st.error(f"An error occurred: {e}")
-        st.exception(e)
+        st.exception(e)  # Display the full exception details in Streamlit
