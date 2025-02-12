@@ -13,6 +13,7 @@ import sys
 import gc
 
 from utils.config import Config  # Import the Config class
+from utils.pdf_processing import process_pdf  # Import PDF processing function
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
@@ -68,7 +69,6 @@ def load_ocr_processor(language, psm):
         st.error(f"Failed to initialize OCR processor: {e}")
         st.stop()
 
-
 # Streamlit app
 st.title("Legal Document Digitization")
 
@@ -79,42 +79,48 @@ uploaded_file = st.file_uploader("Upload an Image or PDF", type=["jpg", "jpeg", 
 
 if uploaded_file:
     try:
-        image = Image.open(uploaded_file).convert("RGB")
-        image = np.array(image)
+        if uploaded_file.type == "application/pdf":
+            with st.spinner("Processing PDF..."):
+                extracted_text = process_pdf(uploaded_file, Config.ocr_options)
+                st.subheader("Extracted Text from PDF:")
+                st.text_area("Extracted Text", extracted_text, height=300)
+        else:
+            image = Image.open(uploaded_file).convert("RGB")
+            image = np.array(image)
 
-        with st.spinner("Processing..."):
-            detections = detector.detect(image)
-            extracted_data = ocr_processor.process_detections(image, detections)
+            with st.spinner("Processing Image..."):
+                detections = detector.detect(image)
+                extracted_data = ocr_processor.process_detections(image, detections)
 
-            st.subheader("Extracted Data (JSON):")
-            st.json(extracted_data)  # Display all data as JSON (for debugging)
+                st.subheader("Extracted Data (JSON):")
+                st.json(extracted_data)  # Display all data as JSON (for debugging)
 
-            for item in extracted_data:
-                if 'text' in item:
-                    st.subheader(f"Raw Text (Bounding Box: {item.get('bbox', 'N/A')})")
-                    st.text_area(f"Raw Text", item['text'], height=100)
+                for item in extracted_data:
+                    if 'text' in item:
+                        st.subheader(f"Raw Text (Bounding Box: {item.get('bbox', 'N/A')})")
+                        st.text_area(f"Raw Text", item['text'], height=100)
 
-                if 'corrected_text' in item:
-                    st.subheader(f"Corrected Text (Bounding Box: {item.get('bbox', 'N/A')})")
-                    st.text_area(f"Corrected Text", item['corrected_text'], height=100)
+                    if 'corrected_text' in item:
+                        st.subheader(f"Corrected Text (Bounding Box: {item.get('bbox', 'N/A')})")
+                        st.text_area(f"Corrected Text", item['corrected_text'], height=100)
 
-                if 'class' in item:
-                    if item['class'] in ['stamp', 'signature']:
-                        st.subheader(f"{item['class'].capitalize()} Detection:")
-                        st.write(f"{item['class'].capitalize()}: {'Detected' if item.get('detected', False) else 'Not Detected'}")
+                    if 'class' in item:
+                        if item['class'] in ['stamp', 'signature']:
+                            st.subheader(f"{item['class'].capitalize()} Detection:")
+                            st.write(f"{item['class'].capitalize()}: {'Detected' if item.get('detected', False) else 'Not Detected'}")
 
-                    elif item['class'] == 'table':
-                        st.subheader(f"Table Data (Bounding Box: {item.get('bbox', 'N/A')})")
-                        if 'cells' in item and item['cells']:
-                            try:
-                                import pandas as pd
-                                df = pd.DataFrame(item['cells'])
-                                st.dataframe(df)
-                            except Exception as e:
-                                st.write("Error displaying table data. Raw data:")
-                                st.write(item['cells'])
-                        else:
-                            st.write("No cell data found.")
+                        elif item['class'] == 'table':
+                            st.subheader(f"Table Data (Bounding Box: {item.get('bbox', 'N/A')})")
+                            if 'cells' in item and item['cells']:
+                                try:
+                                    import pandas as pd
+                                    df = pd.DataFrame(item['cells'])
+                                    st.dataframe(df)
+                                except Exception as e:
+                                    st.write("Error displaying table data. Raw data:")
+                                    st.write(item['cells'])
+                            else:
+                                st.write("No cell data found.")
 
         del image
         gc.collect()
