@@ -5,7 +5,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 import torch
 import streamlit as st
 import numpy as np
-import json
 from PIL import Image
 import os
 import subprocess
@@ -14,28 +13,21 @@ import sys
 import gc
 
 from utils.config import Config  # Import the Config class
-from utils.database_handler import store_ocr_result  # Import the database function
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# Install system dependencies (using st.cache_resource)
-@st.cache_resource
-def install_tesseract():
-    if not os.path.exists('/usr/bin/tesseract'):
-        logger.info("Installing Tesseract-OCR...")
-        try:
-            subprocess.run(['apt-get', 'update'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-            subprocess.run(['apt-get', 'install', '-y', 'tesseract-ocr'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error installing Tesseract: {e}")
-            return False
-    return True
+#Check if tesseract and it's files are correctly installed
+def check_tesseract_installed():
+    try:
+        subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
-if not install_tesseract():
-    st.error("Failed to install Tesseract. Please check the logs.")
+if not check_tesseract_installed():
+    st.error("Tesseract-OCR is not installed. Please ensure it is installed via requirements.txt or packages.txt.")
     st.stop()
 
 # Import custom modules (improved path handling)
@@ -74,7 +66,6 @@ def load_ocr_processor(language, psm):
         st.error(f"Failed to initialize OCR processor: {e}")
         st.stop()
 
-
 # Streamlit app
 st.title("Legal Document Digitization")
 
@@ -95,16 +86,20 @@ if uploaded_file:
         st.subheader("Extracted Data:")
         st.json(extracted_data)  # Display extracted data as JSON
 
+        st.subheader("Raw Text:")
         for item in extracted_data:
             if item.get('text'):  # Check if 'text' key exists
-                corrected_text = item.get('corrected_text')
-                success = store_ocr_result(Config.DB_PATH, str(item['bbox']), item['text'], corrected_text)
-                if not success:
-                    st.error("Error storing OCR result. Check logs.")
-            else:
-                logger.warning(f"No 'text' found in item: {item}") # Log if 'text' is missing
+                st.text_area("Raw Text", item['text'], height=100)
 
-        st.success("Data stored in database.")
+        st.subheader("Corrected Text:")
+        for item in extracted_data:
+            if item.get('corrected_text'):  # Check if 'corrected_text' key exists
+                st.text_area("Corrected Text", item['corrected_text'], height=100)
+
+        st.subheader("Stamp and Signature Detection:")
+        for item in extracted_data:
+            if item.get('class') in ['stamp', 'signature']:
+                st.write(f"{item['class'].capitalize()}: {'Detected' if item['detected'] else 'Not Detected'}")
 
         del image
         gc.collect()
