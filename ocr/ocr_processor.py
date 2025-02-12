@@ -4,7 +4,7 @@ import logging
 from utils.database_handler import store_ocr_result
 
 class OCRProcessor:
-    def __init__(self, language="eng", psm=6):
+    def __init__(self, language="eng+hin+mar", psm=6):
         self.language = language
         self.psm = psm
         self.corrector = pipeline("text2text-generation", model="ai4bharat/IndicBART")
