@@ -1,7 +1,6 @@
 from transformers import pipeline
 import pytesseract
 import logging
-from utils.database_handler import store_ocr_result
 
 class OCRProcessor:
     def __init__(self, language="eng+hin+mar", psm=6):
@@ -45,7 +44,7 @@ class OCRProcessor:
             return text
 
     def process_detections(self, image, detections):
-        """Runs OCR and applies IndicBART correction. Stores results."""
+        """Runs OCR and applies IndicBART correction. Returns results."""
         results = []
         for det in detections:
             x, y, w, h = map(int, det['bbox'])  # Convert to integers HERE
@@ -53,8 +52,11 @@ class OCRProcessor:
             raw_text = self.extract_text(cropped_img)
             corrected_text = self.correct_text(raw_text)
 
-            # Store both raw and corrected text
-            store_ocr_result(det['bbox'], raw_text, corrected_text)  # Store both
-            results.append({'bbox': det['bbox'], 'raw_text': raw_text, 'corrected_text': corrected_text}) # Add raw_text and corrected_text to results
+            results.append({
+                'bbox': det['bbox'],
+                'raw_text': raw_text,
+                'corrected_text': corrected_text,
+                'class': det.get('class', 'text') # Add class information. Default to 'text' if not available
+            })
 
         return results
