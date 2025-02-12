@@ -12,11 +12,11 @@ import logging
 import sys
 import gc
 
-from utils.config import Config  # Import the Config class
-from utils.pdf_processing import process_pdf  # Import PDF processing function
-from utils.image_processing import preprocess_image  # Import image preprocessing
-from utils.ocr_processor import OCRProcessor  # Import OCR processor
-
+from utils.config import Config  
+from utils.pdf_processing import process_pdf  
+from utils.image_processing import preprocess_image  
+from utils.ocr_processor import OCRProcessor  
+from models.yolo_detector import YOLODetector # The YOLOv8s model
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
@@ -33,9 +33,8 @@ if not check_tesseract_installed():
     st.error("Tesseract-OCR is not installed. Please ensure it is installed.")
     st.stop()
 
-# --- KEY CHANGE: Add project root to Python path ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
+sys.path.insert(0, PROJECT_ROOT)  
 
 # Initialize models
 @st.cache_resource
@@ -64,6 +63,7 @@ def load_ocr_processor():
 
 # Streamlit app
 st.title("Legal Document Digitization")
+st.write("By Aryan Tandon and Umesh Tiwari")
 
 detector = load_detector()
 ocr_processor = load_ocr_processor()
