@@ -1,25 +1,28 @@
-import fitz
 from PIL import Image
 import numpy as np
 from .image_processing import preprocess_image
-from .text_extraction import extract_text
+from .ocr_processing import OCRProcessor 
+
+# Initialize OCR Processor
+ocr_processor = OCRProcessor(language="eng+hin+mar", psm=6)
 
 def process_pdf(uploaded_file, options):
     """
-    Processes an uploaded PDF file:
-    1. Read PDF
-    2. Converts each page to an image
-    3. Preprocesses each image
-    4. Extracts text from each preprocessed image
-    5. Combines text from all pages
+    Process an uploaded PDF file:
+    1. Convert PDF to images
+    2. Preprocess images
+    3. Extract text using OCR
     """
-    pdf_bytes = uploaded_file.read()
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    texts = []
-    for page in doc:
-        pix = page.get_pixmap()
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        img_np = np.array(img)
-        processed_image = preprocess_image(img_np, options)
-        texts.append(extract_text(processed_image, options))
-    return "\n\n".join(texts)
+    try:
+        # Convert uploaded PDF file to images
+        images = convert_pdf_to_images(uploaded_file)
+        extracted_text = []
+        for img in images:
+            preprocessed_img = preprocess_image(img, options)
+            text = ocr_processor.extract_text(preprocessed_img)  
+            extracted_text.append(text)
+        return extracted_text
+
+    except Exception as e:
+        print(f"Error processing PDF: {e}")
+        return []
