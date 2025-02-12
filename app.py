@@ -18,7 +18,7 @@ from utils.config import Config  # Import the Config class
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# Check if tesseract is installed (improved)
+# Check if tesseract is installed
 def check_tesseract_installed():
     try:
         subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -27,7 +27,7 @@ def check_tesseract_installed():
         return False
 
 if not check_tesseract_installed():
-    st.error("Tesseract-OCR is not installed. Please ensure it is installed.")  # More concise message
+    st.error("Tesseract-OCR is not installed. Please ensure it is installed.")
     st.stop()
 
 # --- KEY CHANGE: Add project root to Python path ---
@@ -46,11 +46,28 @@ except ImportError as e:
 # Initialize models
 @st.cache_resource
 def load_detector():
-    # ... (same as before)
+    logger.info("Initializing YOLO model...")
+    try:
+        detector = YOLODetector(Config.model_path)
+        logger.info("YOLO model initialized successfully.")
+        return detector
+    except Exception as e:
+        logger.error(f"Error initializing YOLO model: {e}")
+        st.error(f"Failed to initialize YOLO model: {e}")
+        st.stop()
 
 @st.cache_resource
 def load_ocr_processor(language, psm):
-    # ... (same as before)
+    logger.info("Starting OCR processor initialization...")
+    try:
+        ocr_processor = OCRProcessor(language=language, psm=psm)
+        logger.info("OCR processor initialized successfully.")
+        return ocr_processor
+    except Exception as e:
+        logger.error(f"Error initializing OCR processor: {e}")
+        st.error(f"Failed to initialize OCR processor: {e}")
+        st.stop()
+
 
 # Streamlit app
 st.title("Legal Document Digitization")
@@ -66,33 +83,36 @@ if uploaded_file:
         image = np.array(image)
 
         with st.spinner("Processing..."):
-            detections = detector.detect(image)  # Get all detections
+            detections = detector.detect(image)
             extracted_data = ocr_processor.process_detections(image, detections)
 
-            # --- Displaying extracted data ---
-            st.subheader("Extracted Data:")
+            st.subheader("Extracted Data (JSON):")
             st.json(extracted_data)  # Display all data as JSON (for debugging)
 
-            # --- More user-friendly display ---
             for item in extracted_data:
-                if 'text' in item:  # Check if text is present
-                    st.subheader("Raw Text:")
-                    st.text_area(f"Raw Text (Bounding Box: {item.get('bbox', 'N/A')})", item['text'], height=100)  # Include bbox info
+                if 'text' in item:
+                    st.subheader(f"Raw Text (Bounding Box: {item.get('bbox', 'N/A')})")
+                    st.text_area(f"Raw Text", item['text'], height=100)
 
-                if 'corrected_text' in item:  # Check if corrected text is present
-                    st.subheader("Corrected Text:")
-                    st.text_area(f"Corrected Text (Bounding Box: {item.get('bbox', 'N/A')})", item['corrected_text'], height=100)  # Include bbox info
+                if 'corrected_text' in item:
+                    st.subheader(f"Corrected Text (Bounding Box: {item.get('bbox', 'N/A')})")
+                    st.text_area(f"Corrected Text", item['corrected_text'], height=100)
 
-                # Handle stamps, signatures, and tables:
-                if 'class' in item: # Check if class is present
+                if 'class' in item:
                     if item['class'] in ['stamp', 'signature']:
                         st.subheader(f"{item['class'].capitalize()} Detection:")
-                        st.write(f"{item['class'].capitalize()}: {'Detected' if item.get('detected', False) else 'Not Detected'}") # More robust check for 'detected'
+                        st.write(f"{item['class'].capitalize()}: {'Detected' if item.get('detected', False) else 'Not Detected'}")
 
                     elif item['class'] == 'table':
-                        st.subheader("Table Data:")
-                        if 'cells' in item:
-                            st.write(item['cells']) # Or format the table data better
+                        st.subheader(f"Table Data (Bounding Box: {item.get('bbox', 'N/A')})")
+                        if 'cells' in item and item['cells']:
+                            try:
+                                import pandas as pd
+                                df = pd.DataFrame(item['cells'])
+                                st.dataframe(df)
+                            except Exception as e:
+                                st.write("Error displaying table data. Raw data:")
+                                st.write(item['cells'])
                         else:
                             st.write("No cell data found.")
 
