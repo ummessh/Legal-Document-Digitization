@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 from .image_processing import preprocess_image
-from .ocr_processing import OCRProcessor 
+from .ocr_processor import OCRProcessor 
 
 # Initialize OCR Processor
 ocr_processor = OCRProcessor(language="eng+hin+mar", psm=6)
