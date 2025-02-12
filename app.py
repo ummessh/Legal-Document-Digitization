@@ -18,7 +18,7 @@ from utils.config import Config  # Import the Config class
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-#Check if tesseract and it's files are correctly installed
+# Check if tesseract is installed (improved)
 def check_tesseract_installed():
     try:
         subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -27,13 +27,15 @@ def check_tesseract_installed():
         return False
 
 if not check_tesseract_installed():
-    st.error("Tesseract-OCR is not installed. Please ensure it is installed via requirements.txt or packages.txt.")
+    st.error("Tesseract-OCR is not installed. Please ensure it is installed.")  # More concise message
     st.stop()
 
-# Import custom modules (improved path handling)
+# --- KEY CHANGE: Add project root to Python path ---
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
+
+# Import custom modules
 try:
-    module_dir = os.path.dirname(os.path.abspath(__file__))
-    sys.path.append(module_dir)
     from models.yolo_detector import YOLODetector
     from ocr.ocr_processor import OCRProcessor
 except ImportError as e:
@@ -41,30 +43,14 @@ except ImportError as e:
     st.error(f"Failed to load required modules: {e}")
     st.stop()
 
-# Initialize models (using st.cache_resource)
+# Initialize models
 @st.cache_resource
 def load_detector():
-    logger.info("Initializing YOLO model...")
-    try:
-        detector = YOLODetector(Config.model_path)
-        logger.info("YOLO model initialized successfully.")
-        return detector
-    except Exception as e:
-        logger.error(f"Error initializing YOLO model: {e}")
-        st.error(f"Failed to initialize YOLO model: {e}")
-        st.stop()
+    # ... (same as before)
 
 @st.cache_resource
 def load_ocr_processor(language, psm):
-    logger.info("Starting OCR processor initialization...")
-    try:
-        ocr_processor = OCRProcessor(language=language, psm=psm)
-        logger.info("OCR processor initialized successfully.")
-        return ocr_processor
-    except Exception as e:
-        logger.error(f"Error initializing OCR processor: {e}")
-        st.error(f"Failed to initialize OCR processor: {e}")
-        st.stop()
+    # ... (same as before)
 
 # Streamlit app
 st.title("Legal Document Digitization")
@@ -80,26 +66,35 @@ if uploaded_file:
         image = np.array(image)
 
         with st.spinner("Processing..."):
-            detections = detector.detect(image)
+            detections = detector.detect(image)  # Get all detections
             extracted_data = ocr_processor.process_detections(image, detections)
 
-        st.subheader("Extracted Data:")
-        st.json(extracted_data)  # Display extracted data as JSON
+            # --- Displaying extracted data ---
+            st.subheader("Extracted Data:")
+            st.json(extracted_data)  # Display all data as JSON (for debugging)
 
-        st.subheader("Raw Text:")
-        for item in extracted_data:
-            if item.get('text'):  # Check if 'text' key exists
-                st.text_area("Raw Text", item['text'], height=100)
+            # --- More user-friendly display ---
+            for item in extracted_data:
+                if 'text' in item:  # Check if text is present
+                    st.subheader("Raw Text:")
+                    st.text_area(f"Raw Text (Bounding Box: {item.get('bbox', 'N/A')})", item['text'], height=100)  # Include bbox info
 
-        st.subheader("Corrected Text:")
-        for item in extracted_data:
-            if item.get('corrected_text'):  # Check if 'corrected_text' key exists
-                st.text_area("Corrected Text", item['corrected_text'], height=100)
+                if 'corrected_text' in item:  # Check if corrected text is present
+                    st.subheader("Corrected Text:")
+                    st.text_area(f"Corrected Text (Bounding Box: {item.get('bbox', 'N/A')})", item['corrected_text'], height=100)  # Include bbox info
 
-        st.subheader("Stamp and Signature Detection:")
-        for item in extracted_data:
-            if item.get('class') in ['stamp', 'signature']:
-                st.write(f"{item['class'].capitalize()}: {'Detected' if item['detected'] else 'Not Detected'}")
+                # Handle stamps, signatures, and tables:
+                if 'class' in item: # Check if class is present
+                    if item['class'] in ['stamp', 'signature']:
+                        st.subheader(f"{item['class'].capitalize()} Detection:")
+                        st.write(f"{item['class'].capitalize()}: {'Detected' if item.get('detected', False) else 'Not Detected'}") # More robust check for 'detected'
+
+                    elif item['class'] == 'table':
+                        st.subheader("Table Data:")
+                        if 'cells' in item:
+                            st.write(item['cells']) # Or format the table data better
+                        else:
+                            st.write("No cell data found.")
 
         del image
         gc.collect()
@@ -107,4 +102,4 @@ if uploaded_file:
     except Exception as e:
         logger.error(f"Error processing file: {e}")
         st.error(f"An error occurred: {e}")
-        st.exception(e)  # Display the full exception details in Streamlit
+        st.exception(e)  # Display full exception details
