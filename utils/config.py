@@ -25,6 +25,7 @@ class Config:
     CREATE TABLE IF NOT EXISTS ocr_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bbox TEXT,
-        text TEXT
+        raw_text TEXT,
+        corrected_text TEXT NULL
     );
     """
