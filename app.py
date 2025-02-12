@@ -14,6 +14,8 @@ import gc
 
 from utils.config import Config  # Import the Config class
 from utils.pdf_processing import process_pdf  # Import PDF processing function
+from utils.image_processing import preprocess_image  # Import image preprocessing
+from utils.ocr_processor import OCRProcessor  # Import OCR processor
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
@@ -35,15 +37,6 @@ if not check_tesseract_installed():
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
 
-# Import custom modules
-try:
-    from models.yolo_detector import YOLODetector
-    from ocr.ocr_processor import OCRProcessor
-except ImportError as e:
-    logger.error(f"Error importing custom modules: {e}")
-    st.error(f"Failed to load required modules: {e}")
-    st.stop()
-
 # Initialize models
 @st.cache_resource
 def load_detector():
@@ -58,10 +51,10 @@ def load_detector():
         st.stop()
 
 @st.cache_resource
-def load_ocr_processor(language, psm):
+def load_ocr_processor():
     logger.info("Starting OCR processor initialization...")
     try:
-        ocr_processor = OCRProcessor(language=language, psm=psm)
+        ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
         logger.info("OCR processor initialized successfully.")
         return ocr_processor
     except Exception as e:
@@ -73,7 +66,7 @@ def load_ocr_processor(language, psm):
 st.title("Legal Document Digitization")
 
 detector = load_detector()
-ocr_processor = load_ocr_processor(Config.ocr_languages, Config.ocr_psm)
+ocr_processor = load_ocr_processor()
 
 uploaded_file = st.file_uploader("Upload an Image or PDF", type=["jpg", "jpeg", "png", "pdf"])
 
@@ -87,6 +80,14 @@ if uploaded_file:
         else:
             image = Image.open(uploaded_file).convert("RGB")
             image = np.array(image)
+            
+            # Preprocess the image before detection
+            image = preprocess_image(image, {
+                'apply_threshold': True,
+                'apply_deskew': True,
+                'apply_denoise': True,
+                'apply_contrast': True
+            })
 
             with st.spinner("Processing Image..."):
                 detections = detector.detect(image)
