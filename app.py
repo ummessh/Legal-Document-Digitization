@@ -34,71 +34,44 @@ logger = logging.getLogger(__name__)
 
 # OCRProcessor class (Now only uses Tesseract)
 class OCRProcessor:
-    def __init__(self, language='eng', psm=3):
-        self.tesseract_config = f'-l {language} --psm {psm}'
-        import pytesseract
-        self.pytesseract = pytesseract
-
-    def process_detections(self, image, detections):
-        results = []
-        for detection in detections:
-            bbox = detection['bbox']
-            roi = self.extract_roi(image, bbox)
-
-            try:
-                text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
-            except Exception as e:
-                logger.error(f"Tesseract processing error: {e}")
-                text = ''
-
-            results.append({
-                'bbox': bbox,
-                'text': text,
-                'corrected_text': text  # Add your text correction logic here if needed
-            })
-        return results
-
-    @staticmethod
-    def extract_roi(image, bbox):
-        x, y, w, h = bbox
-        return image[int(y):int(y + h), int(x):int(x + w)]
-
+    # ... (No changes to OCRProcessor class) ...
 
 # Initialize models with improved caching
 @st.cache_resource(max_entries=1)
 def load_detector():
-    with st.spinner("Loading YOLO model..."):
-        logger.info("Initializing YOLO model...")
-        try:
-            detector = YOLODetector(Config.model_path)
-            logger.info("YOLO model initialized successfully.")
-            return detector
-        except Exception as e:
-            logger.error(f"Error initializing YOLO model: {e}")
-            st.error(f"Error loading YOLO model: {e}")
-            raise  # Re-raise the exception to stop execution
+    # ... (No changes to load_detector function) ...
 
 @st.cache_resource(max_entries=1)
 def load_ocr_processor():
-    with st.spinner("Loading Tesseract OCR engine..."):
-        logger.info("Initializing Tesseract OCR processor")
-        return OCRProcessor()  # Initialize Tesseract OCR Processor
+    # ... (No changes to load_ocr_processor function) ...
 
 
 def main():
-    detector = load_detector()  # Load YOLO detector (with caching and spinner)
-    ocr_processor = load_ocr_processor()  # Load OCR engine (with caching and spinner)
+    detector = load_detector()
+    ocr_processor = load_ocr_processor()
 
-    # ... rest of your Streamlit app code (image upload, processing, etc.) ...
-    # Example usage:
-    # uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
-    # if uploaded_image is not None:
-    #     image = Image.open(uploaded_image)
-    #     image = np.array(image) # Convert to numpy array for cv2
-    #     detections = detector.detect(image) # Assuming your detector.detect returns a list of dictionaries with 'bbox'
-    #     ocr_results = ocr_processor.process_detections(image, detections)
-    #     for result in ocr_results:
-    #         st.write(f"Bounding Box: {result['bbox']}, Text: {result['text']}")
+    uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+    if uploaded_image is not None:
+        try:  # Add a try-except block for error handling
+            image = Image.open(uploaded_image).convert("RGB") # Ensure RGB format
+            image = np.array(image)
+            st.image(image, caption="Uploaded Image") # Display uploaded image
+
+            detections = detector.detect(image)
+            st.write(f"Detections: {detections}")  # Check YOLO output
+
+            if detections:
+                ocr_results = ocr_processor.process_detections(image, detections)
+                st.write(f"OCR Results: {ocr_results}")  # Check Tesseract output
+
+                for result in ocr_results:
+                    st.write(f"Text: {result['text']}")  # Display the extracted text
+            else:
+                st.write("No detections found by YOLO.")
+
+        except Exception as e: # Handle any exceptions during processing
+            st.error(f"An error occurred: {e}") # Display error to user
+            logger.exception(f"An error occurred: {e}") # Log the full traceback for debugging
 
 
 if __name__ == "__main__":
