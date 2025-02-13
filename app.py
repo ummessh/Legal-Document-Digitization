@@ -50,9 +50,58 @@ def check_ocr_systems():
     return paddle_available, tesseract_available
 
 
-# OCRProcessor class (remains the same)
+# OCRProcessor class (now with correct indentation and contents)
 class OCRProcessor:
-    # ... (your OCRProcessor class code) ...
+    def __init__(self, language='eng', psm=3, use_paddle=True):
+        self.use_paddle = use_paddle
+        if use_paddle:
+            try:
+                self.paddle_ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+                logger.info("PaddleOCR initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing PaddleOCR: {e}")
+                self.use_paddle = False
+
+        if not self.use_paddle:
+            self.tesseract_config = f'-l {language} --psm {psm}'
+            import pytesseract
+            self.pytesseract = pytesseract
+
+    def process_detections(self, image, detections):
+        results = []
+        for detection in detections:
+            bbox = detection['bbox']
+            roi = self.extract_roi(image, bbox)
+
+            if self.use_paddle:
+                try:
+                    paddle_result = self.paddle_ocr.ocr(roi, cls=True)
+                    if paddle_result and paddle_result[0]:
+                        text = '\n'.join([line[1][0] for line in paddle_result[0]])
+                    else:
+                        text = ''
+                except Exception as e:
+                    logger.error(f"PaddleOCR processing error: {e}")
+                    text = ''
+            else:
+                try:
+                    text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
+                except Exception as e:
+                    logger.error(f"Tesseract processing error: {e}")
+                    text = ''
+
+            results.append({
+                'bbox': bbox,
+                'text': text,
+                'corrected_text': text  # Add your text correction logic here if needed
+            })
+        return results
+
+    @staticmethod
+    def extract_roi(image, bbox):
+        x, y, w, h = bbox
+        return image[int(y):int(y+h), int(x):int(x+w)]
+
 
 # Initialize models with improved caching (and placeholder)
 @st.cache_resource(max_entries=1)
