@@ -89,7 +89,10 @@ def load_ocr_processor():
 def main():
     detector = load_detector()
     ocr_processor = load_ocr_processor()
+    st.title("Legal Document digitizer")
+    st.write("By Aryan Tandon and Umesh Tiwari")
 
+    
     uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
     if uploaded_image is not None:
         try:
