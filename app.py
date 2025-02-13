@@ -160,6 +160,19 @@ def main():
 
                 entity_counter = 1  # Initialize a single counter *outside* the entity checks
 
+                # Confidence Scores Box
+                st.write("## Confidence Scores:")  # Header for confidence scores
+                with st.container():  # Use a container for better layout
+                    confidence_dict = {}  # Dictionary to store confidence scores
+                    for detection in detections:
+                        if 'class' in detection:
+                            confidence_dict[detection['class']] = detection['confidence']
+
+                    st.write(f"1) Text: {confidence_dict.get('text', 'null')}")  # Display text confidence or null
+                    st.write(f"2) Table: {confidence_dict.get('table', 'null')}")  # Display table confidence or null
+                    st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")  # Display stamp confidence or null
+                    st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")  # Display signature confidence or null
+
                 if text_images:
                     st.write("Text:")  # Subheader for Text
                     for img in text_images:
