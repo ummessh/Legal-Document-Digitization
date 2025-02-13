@@ -38,7 +38,7 @@ def check_ocr_systems():
     tesseract_available = True
 
     try:
-        _ = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)  # or use_gpu=False if no GPU
+        _ = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False, show_log=False)  # Suppress PaddleOCR logs
     except Exception:
         paddle_available = False
 
@@ -50,13 +50,13 @@ def check_ocr_systems():
     return paddle_available, tesseract_available
 
 
-# OCRProcessor class (now with correct indentation and contents)
+# OCRProcessor class
 class OCRProcessor:
     def __init__(self, language='eng', psm=3, use_paddle=True):
         self.use_paddle = use_paddle
         if use_paddle:
             try:
-                self.paddle_ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+                self.paddle_ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False, show_log=False)  # Suppress PaddleOCR logs
                 logger.info("PaddleOCR initialized successfully")
             except Exception as e:
                 logger.error(f"Error initializing PaddleOCR: {e}")
@@ -103,10 +103,10 @@ class OCRProcessor:
         return image[int(y):int(y+h), int(x):int(x+w)]
 
 
-# Initialize models with improved caching (and placeholder)
+# Initialize models with improved caching
 @st.cache_resource(max_entries=1)
 def load_detector():
-    with st.spinner("Loading YOLO model..."):  # Add spinner
+    with st.spinner("Loading YOLO model..."):
         logger.info("Initializing YOLO model...")
         try:
             detector = YOLODetector(Config.model_path)
@@ -114,14 +114,14 @@ def load_detector():
             return detector
         except Exception as e:
             logger.error(f"Error initializing YOLO model: {e}")
-            st.error(f"Error loading YOLO model: {e}") # Show error in Streamlit
+            st.error(f"Error loading YOLO model: {e}")
             raise  # Re-raise the exception to stop execution
 
 @st.cache_resource(max_entries=1)
 def load_ocr_processor():
-    with st.spinner("Loading OCR engine..."):  # Add spinner
+    with st.spinner("Loading OCR engine..."):
         logger.info("Starting OCR processor initialization...")
-        paddle_available, tesseract_available = check_ocr_systems()  # Call check_ocr_systems()
+        paddle_available, tesseract_available = check_ocr_systems()
 
         if paddle_available:
             logger.info("Initializing PaddleOCR processor")
@@ -135,13 +135,10 @@ def load_ocr_processor():
             st.error(error_msg)
             st.stop()  # Stop execution if no OCR engine is available
 
-# ... (display_processed_image function remains the same) ...
 
 def main():
     detector = load_detector()  # Load YOLO detector (with caching and spinner)
     ocr_processor = load_ocr_processor()  # Load OCR engine (with caching and spinner)
-
-    # ... (Rest of your main function code remains the same) ...
 
 if __name__ == "__main__":
     main()
