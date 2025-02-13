@@ -136,14 +136,6 @@ def main():
 
                     elif category == "table":
                         try:
-                            # Example: If your table ROI is an image:
-                            # img_bytes = cv2.imencode('.png', roi)[1].tobytes()
-                            # df = pd.read_csv(io.BytesIO(img_bytes))
-                            # Example: If your table ROI is CSV data:
-                            # df = pd.read_csv(io.StringIO(roi))
-                            # Example: If your table ROI is HTML data:
-                            # df = pd.read_html(roi)[0]
-                            # Replace the example with your actual conversion
                             df = pd.DataFrame() # Placeholder - Replace with your conversion
                             st.dataframe(df)
                             table_images.append(roi)
@@ -207,6 +199,17 @@ def main():
                 else:
                     st.write(f"{entity_counter}) Signatures: Not Detected")
                     entity_counter += 1
+
+                st.write("## Extracted Text:")
+
+                if text_images:
+                    for detection in detections:
+                        if 'class' in detection and detection['class'] == 'text':
+                            ocr_results = ocr_processor.process_detections(image, [detection])
+                            for result in ocr_results:
+                                st.write(f"Text: {result['text']}")
+                else:
+                    st.write("No Text Detected")
 
             else:
                 st.write("No detections found by YOLO.")
