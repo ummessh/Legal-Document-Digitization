@@ -14,12 +14,12 @@ import gc
 import io
 import zipfile
 import cv2
+from paddleocr import PaddleOCR
 
 from utils.config import Config  
 from utils.pdf_processing import process_pdf  
 from utils.image_processing import preprocess_image  
-from utils.ocr_processor import OCRProcessor  
-from models.yolo_detector import YOLODetector  # The YOLOv8s model
+from models.yolo_detector import YOLODetector  
 
 # Setup page configuration
 st.set_page_config(
@@ -32,22 +32,104 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# Check if Tesseract is installed
-def check_tesseract_installed():
+# Modified OCR Processor class with PaddleOCR integration
+class OCRProcessor:
+    def __init__(self, language='eng', psm=3, use_paddle=True):
+        self.use_paddle = use_paddle
+        if use_paddle:
+            try:
+                self.paddle_ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+                logger.info("PaddleOCR initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing PaddleOCR: {e}")
+                self.use_paddle = False
+                
+        if not self.use_paddle:
+            self.tesseract_config = f'-l {language} --psm {psm}'
+            import pytesseract
+            self.pytesseract = pytesseract
+
+    def process_detections(self, image, detections):
+        results = []
+        for detection in detections:
+            bbox = detection['bbox']
+            roi = self.extract_roi(image, bbox)
+            
+            if self.use_paddle:
+                try:
+                    paddle_result = self.paddle_ocr.ocr(roi, cls=True)
+                    if paddle_result and paddle_result[0]:
+                        text = '\n'.join([line[1][0] for line in paddle_result[0]])
+                    else:
+                        text = ''
+                except Exception as e:
+                    logger.error(f"PaddleOCR processing error: {e}")
+                    text = ''
+            else:
+                try:
+                    text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
+                except Exception as e:
+                    logger.error(f"Tesseract processing error: {e}")
+                    text = ''
+
+            results.append({
+                'bbox': bbox,
+                'text': text,
+                'corrected_text': text  # Add your text correction logic here if needed
+            })
+        return results
+
+    @staticmethod
+    def extract_roi(image, bbox):
+        x, y, w, h = bbox
+        return image[int(y):int(y+h), int(x):int(x+w)]
+
+# Check OCR system availability
+def check_ocr_systems():
+    paddle_available = True
+    tesseract_available = True
+    
+    try:
+        _ = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+    except Exception:
+        paddle_available = False
+        
     try:
         subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+        tesseract_available = False
+    
+    return paddle_available, tesseract_available
 
-if not check_tesseract_installed():
-    st.error("Tesseract-OCR is not installed. Please ensure it is installed.")
-    st.stop()
+# Initialize models with improved caching
+@st.cache_resource(max_entries=1)
+def load_detector():
+    logger.info("Initializing YOLO model...")
+    try:
+        detector = YOLODetector(Config.model_path)
+        logger.info("YOLO model initialized successfully.")
+        return detector
+    except Exception as e:
+        logger.error(f"Error initializing YOLO model: {e}")
+        raise e
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, PROJECT_ROOT)  
+@st.cache_resource(max_entries=1)
+def load_ocr_processor():
+    logger.info("Starting OCR processor initialization...")
+    paddle_available, tesseract_available = check_ocr_systems()
+    
+    if paddle_available:
+        logger.info("Initializing PaddleOCR processor")
+        return OCRProcessor(use_paddle=True)
+    elif tesseract_available:
+        logger.info("Falling back to Tesseract OCR processor")
+        return OCRProcessor(use_paddle=False)
+    else:
+        error_msg = "Neither PaddleOCR nor Tesseract is available. Please install at least one OCR system."
+        logger.error(error_msg)
+        st.error(error_msg)
+        st.stop()
 
-# Visualization: display original and processed images side by side
 def display_processed_image(original_image, processed_image):
     col1, col2 = st.columns(2)
     with col1:
@@ -57,31 +139,6 @@ def display_processed_image(original_image, processed_image):
         st.subheader("Processed Image")
         st.image(processed_image, use_container_width=True)
 
-# Initialize models
-@st.cache_resource
-def load_detector():
-    logger.info("Initializing YOLO model...")
-    try:
-        detector = YOLODetector(Config.model_path)
-        logger.info("YOLO model initialized successfully.")
-        return detector
-    except Exception as e:
-        logger.error(f"Error initializing YOLO model: {e}")
-        st.error(f"Failed to initialize YOLO model: {e}")
-        st.stop()
-
-@st.cache_resource
-def load_ocr_processor():
-    logger.info("Starting OCR processor initialization...")
-    try:
-        ocr_processor = OCRProcessor(language=Config.ocr_languages, psm=Config.ocr_psm)
-        logger.info("OCR processor initialized successfully.")
-        return ocr_processor
-    except Exception as e:
-        logger.error(f"Error initializing OCR processor: {e}")
-        st.error(f"Failed to initialize OCR processor: {e}")
-        st.stop()
-
 def main():
     detector = load_detector()
     ocr_processor = load_ocr_processor()
@@ -89,14 +146,18 @@ def main():
     st.title("Legal Document Digitization with YOLO OCR")
     st.write("By Aryan Tandon and Umesh Tiwari")
 
-    # File uploader: allow multiple uploads
+    # OCR System Status
+    paddle_available, tesseract_available = check_ocr_systems()
+    st.sidebar.subheader("OCR System Status")
+    st.sidebar.write(f"PaddleOCR: {'✅ Available' if paddle_available else '❌ Not Available'}")
+    st.sidebar.write(f"Tesseract: {'✅ Available' if tesseract_available else '❌ Not Available'}")
+
     uploaded_files = st.file_uploader(
         "Upload Images or PDF files",
         type=["jpg", "jpeg", "png", "pdf"],
         accept_multiple_files=True
     )
 
-    # Containers to hold extracted text outputs for download
     all_extracted_texts = []
     individual_texts = {}
 
@@ -119,7 +180,6 @@ def main():
                         st.error(f"An error occurred while processing PDF: {e}")
             else:
                 try:
-                    # Load the original image and create a copy for processing
                     original_image = np.array(Image.open(uploaded_file).convert("RGB"))
                     processed_image = preprocess_image(
                         original_image.copy(),
@@ -131,14 +191,12 @@ def main():
                         }
                     )
 
-                    # Display original vs. processed image
                     display_processed_image(original_image, processed_image)
 
                     with st.spinner("Processing Image..."):
                         detections = detector.detect(processed_image)
                         extracted_data = ocr_processor.process_detections(processed_image, detections)
 
-                    # Combine extracted text from detection outputs
                     combined_text = ""
                     for item in extracted_data:
                         if 'text' in item:
@@ -154,17 +212,16 @@ def main():
                     all_extracted_texts.append(f"File: {uploaded_file.name}\n\n{combined_text}\n\n{'='*50}\n")
                     individual_texts[uploaded_file.name] = combined_text
 
-                    # Cleanup
                     del original_image, processed_image
                     gc.collect()
                 except Exception as e:
                     logger.error(f"Error processing image file {uploaded_file.name}: {e}")
                     st.error(f"An error occurred while processing image: {e}")
+            
             progress_bar.progress((i+1)/total_files)
 
         progress_bar.empty()
 
-        # Download button for combined extracted text
         combined_text_all = "\n".join(all_extracted_texts)
         combined_text_io = io.BytesIO(combined_text_all.encode('utf-8'))
         st.download_button(
@@ -174,7 +231,6 @@ def main():
             mime="text/plain"
         )
 
-        # Download button for individual extracted texts as a ZIP file
         if individual_texts:
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
