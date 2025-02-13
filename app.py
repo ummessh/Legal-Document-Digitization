@@ -20,70 +20,7 @@ from utils.pdf_processing import process_pdf  # Make sure this path is correct
 from utils.image_processing import preprocess_image  # Make sure this path is correct
 from models.yolo_detector import YOLODetector  # Make sure this path is correct
 
-# Setup page configuration
-st.set_page_config(
-    page_title="Legal Document Digitization with YOLO OCR",
-    page_icon=":page_facing_up:",
-    layout="wide"
-)
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
-logger = logging.getLogger(__name__)
-
-
-# OCRProcessor class (Now only uses Tesseract)
-class OCRProcessor:
-    def __init__(self, language='eng', psm=3):
-        self.tesseract_config = f'-l {language} --psm {psm}'
-        import pytesseract
-        self.pytesseract = pytesseract
-
-    def process_detections(self, image, detections):
-        results = []
-        for detection in detections:
-            bbox = detection['bbox']
-            roi = self.extract_roi(image, bbox)
-
-            try:
-                text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
-            except Exception as e:
-                logger.error(f"Tesseract processing error: {e}")
-                text = ''
-
-            results.append({
-                'bbox': bbox,
-                'text': text,
-                'corrected_text': text  # Add your text correction logic here if needed
-            })
-        return results
-
-    @staticmethod
-    def extract_roi(image, bbox):
-        x, y, w, h = bbox
-        return image[int(y):int(y + h), int(x):int(x + w)]
-
-
-# Initialize models with improved caching
-@st.cache_resource(max_entries=1)
-def load_detector():
-    with st.spinner("Loading YOLO model..."):
-        logger.info("Initializing YOLO model...")
-        try:
-            detector = YOLODetector(Config.model_path)
-            logger.info("YOLO model initialized successfully.")
-            return detector
-        except Exception as e:
-            logger.error(f"Error initializing YOLO model: {e}")
-            st.error(f"Error loading YOLO model: {e}")
-            raise  # Re-raise the exception to stop execution
-
-@st.cache_resource(max_entries=1)
-def load_ocr_processor():
-    with st.spinner("Loading Tesseract OCR engine..."):
-        logger.info("Initializing Tesseract OCR processor")
-        return OCRProcessor()  # Initialize Tesseract OCR Processor
-
+# ... (rest of your imports, logging setup, and OCRProcessor class)
 
 def main():
     detector = load_detector()
@@ -97,14 +34,47 @@ def main():
             st.image(image, caption="Uploaded Image")
 
             detections = detector.detect(image)
-            st.write(f"Detections: {detections}")
+            st.write(f"Detections: {detections}")  # Display detections for inspection
+
+            image_with_boxes = image.copy()  # Create a copy to draw on
 
             if detections:
-                ocr_results = ocr_processor.process_detections(image, detections)
-                st.write(f"OCR Results: {ocr_results}")
+                for detection in detections:
+                    bbox = detection['bbox']
+                    x, y, w, h = map(int, bbox)  # Convert to integers
+                    cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle
 
-                for result in ocr_results:
-                    st.write(f"Text: {result['text']}")
+                    # Classify (replace with your actual classification logic)
+                    if 'class' in detection:
+                        category = detection['class']
+                    elif 'confidence' in detection: # If class info is not available, use confidence
+                        confidence = detection['confidence']
+                        if confidence > 0.8: # Example threshold - adjust as needed
+                            category = "text"
+                        else:
+                            category = "unknown"
+                    else:
+                        category = "unknown"
+
+                    # Add class label to the image with bounding box
+                    cv2.putText(image_with_boxes, str(category), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+                    # OCR and display based on category
+                    if category == "text":
+                        ocr_results = ocr_processor.process_detections(image, [detection]) # Process one detection at a time
+                        for result in ocr_results:
+                            st.write(f"Category: {category}, Text: {result['text']}")
+                    elif category == "table":
+                        st.write(f"Category: {category}")  # Add table processing logic here
+                    elif category == "stamp":
+                        st.write(f"Category: {category}")  # Add stamp processing logic here
+                    elif category == "signature":
+                        st.write(f"Category: {category}")  # Add signature processing logic here
+                    else:
+                        st.write(f"Category: {category} (Unknown)")
+
+                st.image(image_with_boxes, caption="Image with Detections and Labels")  # Display with boxes and labels
+
             else:
                 st.write("No detections found by YOLO.")
 
