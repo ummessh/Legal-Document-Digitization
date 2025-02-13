@@ -185,3 +185,6 @@ if uploaded_files:
             file_name="individual_extracted_texts.zip",
             mime="application/zip"
         )
+
+if __name__ == "__main__":
+    main()
