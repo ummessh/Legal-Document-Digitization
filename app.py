@@ -166,37 +166,47 @@ def main():
 
                 st.subheader("Extracted Entities")
 
+                entity_counter = 1  # Initialize a single counter *outside* the entity checks
+
                 if text_images:
-                    st.write("Text:")
-                    for i, img in enumerate(text_images):
-                        st.write(f"{i+1})")  # Numbering
+                    st.write("Text:")  # Subheader for Text
+                    for img in text_images:
+                        st.write(f"{entity_counter})")
                         st.image(img)
+                        entity_counter += 1  # Increment the counter
                 else:
-                    st.write("Text: Not Detected")
+                    st.write(f"{entity_counter}) Text: Not Detected")  # Use the counter even if not detected
+                    entity_counter += 1
 
                 if table_images:
-                    st.write("Tables:")
-                    for i, img in enumerate(table_images):
-                        st.write(f"{i+1})")  # Numbering
+                    st.write("Tables:")  # Subheader for Tables
+                    for img in table_images:
+                        st.write(f"{entity_counter})")
                         st.image(img)
+                        entity_counter += 1
                 else:
-                    st.write("Tables: Not Detected")
+                    st.write(f"{entity_counter}) Tables: Not Detected")
+                    entity_counter += 1
 
                 if stamp_images:
-                    st.write("Stamps:")
-                    for i, img in enumerate(stamp_images):
-                        st.write(f"{i+1})")  # Numbering
+                    st.write("Stamps:")  # Subheader for Stamps
+                    for img in stamp_images:
+                        st.write(f"{entity_counter})")
                         st.image(img)
+                        entity_counter += 1
                 else:
-                    st.write("Stamps: Not Detected")
+                    st.write(f"{entity_counter}) Stamps: Not Detected")
+                    entity_counter += 1
 
                 if signature_images:
-                    st.write("Signatures:")
-                    for i, img in enumerate(signature_images):
-                        st.write(f"{i+1})")  # Numbering
+                    st.write("Signatures:")  # Subheader for Signatures
+                    for img in signature_images:
+                        st.write(f"{entity_counter})")
                         st.image(img)
+                        entity_counter += 1
                 else:
-                    st.write("Signatures: Not Detected")
+                    st.write(f"{entity_counter}) Signatures: Not Detected")
+                    entity_counter += 1
 
             else:
                 st.write("No detections found by YOLO.")
