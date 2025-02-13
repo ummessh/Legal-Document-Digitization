@@ -32,6 +32,27 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
+# Define check_ocr_systems FIRST (before it's used)
+def check_ocr_systems():
+    paddle_available = True
+    tesseract_available = True
+
+    try:
+        _ = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)  # or use_gpu=False if no GPU
+    except Exception:
+        paddle_available = False
+
+    try:
+        subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        tesseract_available = False
+
+    return paddle_available, tesseract_available
+
+
+# OCRProcessor class (remains the same)
+class OCRProcessor:
+    # ... (your OCRProcessor class code) ...
 
 # Initialize models with improved caching (and placeholder)
 @st.cache_resource(max_entries=1)
@@ -51,7 +72,7 @@ def load_detector():
 def load_ocr_processor():
     with st.spinner("Loading OCR engine..."):  # Add spinner
         logger.info("Starting OCR processor initialization...")
-        paddle_available, tesseract_available = check_ocr_systems()
+        paddle_available, tesseract_available = check_ocr_systems()  # Call check_ocr_systems()
 
         if paddle_available:
             logger.info("Initializing PaddleOCR processor")
@@ -64,10 +85,6 @@ def load_ocr_processor():
             logger.error(error_msg)
             st.error(error_msg)
             st.stop()  # Stop execution if no OCR engine is available
-
-
-
-# ... (Rest of your OCRProcessor class and check_ocr_systems function remain the same) ...
 
 # ... (display_processed_image function remains the same) ...
 
