@@ -6,10 +6,11 @@ Pillow==10.1.0
 numpy==1.26.4
 PyMuPDF==1.23.25
 pdf2image==1.17.0
-torch==2.2.1
-torchvision==0.17.1
+torch==2.2.1 --index-url https://download.pytorch.org/whl/cpu
+torchvision==0.17.1 --index-url https://download.pytorch.org/whl/cpu
 ultralytics==8.0.196
 sentencepiece==0.2.0
 transformers==4.36.0 
 huggingface_hub==0.20.0
-ultralytics==8.0.196
+paddlepaddle==2.5.2
+paddleocr==2.7.0.3
