@@ -14,12 +14,12 @@ import gc
 import io
 import zipfile
 import cv2
-from paddleocr import PaddleOCR
+import pandas as pd  # Import pandas for table processing
 
-from utils.config import Config
-from utils.pdf_processing import process_pdf
-from utils.image_processing import preprocess_image
-from models.yolo_detector import YOLODetector
+from utils.config import Config  # Make sure this path is correct
+from utils.pdf_processing import process_pdf  # Make sure this path is correct
+from utils.image_processing import preprocess_image  # Make sure this path is correct
+from models.yolo_detector import YOLODetector  # Make sure this path is correct
 
 # Setup page configuration
 st.set_page_config(
@@ -32,40 +32,13 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# Define check_ocr_systems FIRST (before it's used)
-def check_ocr_systems():
-    paddle_available = True
-    tesseract_available = True
 
-    try:
-        _ = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False, show_log=False)  # Suppress PaddleOCR logs
-    except Exception:
-        paddle_available = False
-
-    try:
-        subprocess.run(['tesseract', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        tesseract_available = False
-
-    return paddle_available, tesseract_available
-
-
-# OCRProcessor class
+# OCRProcessor class (Now only uses Tesseract)
 class OCRProcessor:
-    def __init__(self, language='eng', psm=3, use_paddle=True):
-        self.use_paddle = use_paddle
-        if use_paddle:
-            try:
-                self.paddle_ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False, show_log=False)  # Suppress PaddleOCR logs
-                logger.info("PaddleOCR initialized successfully")
-            except Exception as e:
-                logger.error(f"Error initializing PaddleOCR: {e}")
-                self.use_paddle = False
-
-        if not self.use_paddle:
-            self.tesseract_config = f'-l {language} --psm {psm}'
-            import pytesseract
-            self.pytesseract = pytesseract
+    def __init__(self, language='eng', psm=3):
+        self.tesseract_config = f'-l {language} --psm {psm}'
+        import pytesseract
+        self.pytesseract = pytesseract
 
     def process_detections(self, image, detections):
         results = []
@@ -73,22 +46,11 @@ class OCRProcessor:
             bbox = detection['bbox']
             roi = self.extract_roi(image, bbox)
 
-            if self.use_paddle:
-                try:
-                    paddle_result = self.paddle_ocr.ocr(roi, cls=True)
-                    if paddle_result and paddle_result[0]:
-                        text = '\n'.join([line[1][0] for line in paddle_result[0]])
-                    else:
-                        text = ''
-                except Exception as e:
-                    logger.error(f"PaddleOCR processing error: {e}")
-                    text = ''
-            else:
-                try:
-                    text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
-                except Exception as e:
-                    logger.error(f"Tesseract processing error: {e}")
-                    text = ''
+            try:
+                text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
+            except Exception as e:
+                logger.error(f"Tesseract processing error: {e}")
+                text = ''
 
             results.append({
                 'bbox': bbox,
@@ -100,7 +62,7 @@ class OCRProcessor:
     @staticmethod
     def extract_roi(image, bbox):
         x, y, w, h = bbox
-        return image[int(y):int(y+h), int(x):int(x+w)]
+        return image[int(y):int(y + h), int(x):int(x + w)]
 
 
 # Initialize models with improved caching
@@ -119,26 +81,96 @@ def load_detector():
 
 @st.cache_resource(max_entries=1)
 def load_ocr_processor():
-    with st.spinner("Loading OCR engine..."):
-        logger.info("Starting OCR processor initialization...")
-        paddle_available, tesseract_available = check_ocr_systems()
-
-        if paddle_available:
-            logger.info("Initializing PaddleOCR processor")
-            return OCRProcessor(use_paddle=True)
-        elif tesseract_available:
-            logger.info("Falling back to Tesseract OCR processor")
-            return OCRProcessor(use_paddle=False)
-        else:
-            error_msg = "Neither PaddleOCR nor Tesseract is available. Please install at least one OCR system."
-            logger.error(error_msg)
-            st.error(error_msg)
-            st.stop()  # Stop execution if no OCR engine is available
+    with st.spinner("Loading Tesseract OCR engine..."):
+        logger.info("Initializing Tesseract OCR processor")
+        return OCRProcessor()  # Initialize Tesseract OCR Processor
 
 
 def main():
-    detector = load_detector()  # Load YOLO detector (with caching and spinner)
-    ocr_processor = load_ocr_processor()  # Load OCR engine (with caching and spinner)
+    detector = load_detector()
+    ocr_processor = load_ocr_processor()
+
+    uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+    if uploaded_image is not None:
+        try:
+            image = Image.open(uploaded_image).convert("RGB")  # Ensure RGB format
+            image = np.array(image)
+            st.image(image, caption="Uploaded Image")
+
+            detections = detector.detect(image)
+            st.write(f"Detections: {detections}")
+
+            image_with_boxes = image.copy()
+
+            if detections:
+                for detection in detections:
+                    bbox = detection['bbox']
+                    x, y, w, h = map(int, bbox)
+                    cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+                    if 'class' in detection:  # Replace 'class' with your actual class label key
+                        category = detection['class']
+                    elif 'confidence' in detection:  # If no class label, use confidence
+                        confidence = detection['confidence']
+                        if confidence > 0.8:  # Adjust threshold as needed
+                            category = "text"  # Or determine based on other detection properties
+                        else:
+                            category = "unknown"
+                    else:
+                        category = "unknown"
+
+                    cv2.putText(image_with_boxes, str(category), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+
+                    if category == "text":
+                        ocr_results = ocr_processor.process_detections(image, [detection])
+                        for result in ocr_results:
+                            st.write(f"Category: {category}, Text: {result['text']}")
+                    elif category == "table":
+                        try:
+                            roi = image[y:y+h, x:x+w] # Extract the region of interest (ROI)
+                            # Convert ROI to a suitable format for pandas (e.g., image, CSV string)
+                            # The exact conversion depends on the format of your table data.
+                            # Example (if the ROI is a table image):
+                            # img_bytes = cv2.imencode('.png', roi)[1].tobytes() # Encode ROI to png bytes
+                            # df = pd.read_csv(io.BytesIO(img_bytes)) # Read the image as a csv
+                            # Example (if the ROI is a CSV string):
+                            # df = pd.read_csv(io.StringIO(roi)) # Read the ROI as a csv string
+                            # Example (if the ROI is an HTML string):
+                            # df = pd.read_html(roi)[0] # Read the ROI as an HTML table
+                            # Example (if the ROI is a list of lists):
+                            # df = pd.DataFrame(roi) # Create a dataframe from a list of lists
+                            # Replace the example with your actual conversion
+                            df = pd.DataFrame() # Placeholder - Replace with your conversion
+                            st.dataframe(df)
+                            if "tables" not in st.session_state:
+                                st.session_state.tables = []
+                            st.session_state.tables.append(df.to_dict())
+
+                        except Exception as e:
+                            st.error(f"Error processing table: {e}")
+                            logger.exception(f"Error processing table: {e}")
+
+                    elif category == "stamp":
+                        st.write("Stamp detected!")
+                        # Add more advanced stamp processing here (e.g., OCR, image analysis)
+
+                    elif category == "signature":
+                        st.write("Signature detected!")
+                        # Add more advanced signature processing here (e.g., signature verification)
+
+                    else:
+                        st.write(f"Category: {category} (Unknown)")
+
+                st.image(image_with_boxes, caption="Image with Detections and Labels")
+
+            else:
+                st.write("No detections found by YOLO.")
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+            logger.exception(f"An error occurred: {e}")
+
 
 if __name__ == "__main__":
     main()
