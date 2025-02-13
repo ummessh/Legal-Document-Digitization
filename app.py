@@ -67,7 +67,7 @@ class OCRProcessor:
 
 # Initialize models with improved caching
 @st.cache_resource(max_entries=1)
-def load_detector():
+def load_detector():  # Correct indentation here
     with st.spinner("Loading YOLO model..."):
         logger.info("Initializing YOLO model...")
         try:
@@ -80,7 +80,7 @@ def load_detector():
             raise  # Re-raise the exception to stop execution
 
 @st.cache_resource(max_entries=1)
-def load_ocr_processor():
+def load_ocr_processor():  # Correct indentation here
     with st.spinner("Loading Tesseract OCR engine..."):
         logger.info("Initializing Tesseract OCR processor")
         return OCRProcessor()  # Initialize Tesseract OCR Processor
@@ -105,6 +105,11 @@ def main():
 
             image_with_boxes = image.copy()
 
+            text_images = []
+            table_images = []
+            stamp_images = []
+            signature_images = []
+
             if detections:
                 for detection in detections:
                     bbox = detection['bbox']
@@ -124,48 +129,103 @@ def main():
 
                     cv2.putText(image_with_boxes, str(category), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
+                    roi = image[y:y+h, x:x+w]  # Extract ROI *here*
 
                     if category == "text":
                         ocr_results = ocr_processor.process_detections(image, [detection])
                         for result in ocr_results:
                             st.write(f"Category: {category}, Text: {result['text']}")
+                        text_images.append(roi)
+
                     elif category == "table":
                         try:
-                            roi = image[y:y+h, x:x+w] # Extract the region of interest (ROI)
-                            # Convert ROI to a suitable format for pandas (e.g., image, CSV string)
-                            # The exact conversion depends on the format of your table data.
-                            # Example (if the ROI is a table image):
-                            # img_bytes = cv2.imencode('.png', roi)[1].tobytes() # Encode ROI to png bytes
-                            # df = pd.read_csv(io.BytesIO(img_bytes)) # Read the image as a csv
-                            # Example (if the ROI is a CSV string):
-                            # df = pd.read_csv(io.StringIO(roi)) # Read the ROI as a csv string
-                            # Example (if the ROI is an HTML string):
-                            # df = pd.read_html(roi)[0] # Read the ROI as an HTML table
-                            # Example (if the ROI is a list of lists):
-                            # df = pd.DataFrame(roi) # Create a dataframe from a list of lists
-                            # Replace the example with your actual conversion
                             df = pd.DataFrame() # Placeholder - Replace with your conversion
                             st.dataframe(df)
-                            if "tables" not in st.session_state:
-                                st.session_state.tables = []
-                            st.session_state.tables.append(df.to_dict())
-
+                            table_images.append(roi)
                         except Exception as e:
                             st.error(f"Error processing table: {e}")
                             logger.exception(f"Error processing table: {e}")
 
                     elif category == "stamp":
                         st.write("Stamp detected!")
-                        # Add more advanced stamp processing here (e.g., OCR, image analysis)
+                        stamp_images.append(roi)
 
                     elif category == "signature":
                         st.write("Signature detected!")
-                        # Add more advanced signature processing here (e.g., signature verification)
+                        signature_images.append(roi)
 
                     else:
                         st.write(f"Category: {category} (Unknown)")
 
                 st.image(image_with_boxes, caption="Image with Detections and Labels")
+
+                st.subheader("Extracted Entities")
+
+                entity_counter = 1  # Initialize a single counter *outside* the entity checks
+
+                # Confidence Scores Box
+                st.write("## Confidence Scores:")  # Header for confidence scores
+                with st.container():  # Use a container for better layout
+                    confidence_dict = {}  # Dictionary to store confidence scores
+                    for detection in detections:
+                        if 'class' in detection:
+                            confidence_dict[detection['class']] = detection['confidence']
+
+                    st.write(f"1) Text: {confidence_dict.get('text', 'null')}")  # Display text confidence or null
+                    st.write(f"2) Table: {confidence_dict.get('table', 'null')}")  # Display table confidence or null
+                    st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")  # Display stamp confidence or null
+                    st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")  # Display signature confidence or null
+
+                if text_images:
+                    st.write("Text:")  # Subheader for Text
+                    for img in text_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img)
+                        entity_counter += 1  # Increment the counter
+                else:
+                    st.write(f"{entity_counter}) Text: Not Detected")  # Use the counter even if not detected
+                    entity_counter += 1
+
+                if table_images:
+                    st.write("Tables:")  # Subheader for Tables
+                    for img in table_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Tables: Not Detected")
+                    entity_counter += 1
+
+                if stamp_images:
+                    st.write("Stamps:")  # Subheader for Stamps
+                    for img in stamp_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Stamps: Not Detected")
+                    entity_counter += 1
+
+                if signature_images:
+                    st.write("Signatures:")  # Subheader for Signatures
+                    for img in signature_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Signatures: Not Detected")
+                    entity_counter += 1
+
+                st.write("## Extracted Text:")
+
+                if text_images:
+                    for detection in detections:
+                        if 'class' in detection and detection['class'] == 'text':
+                            ocr_results = ocr_processor.process_detections(image, [detection])
+                            for result in ocr_results:
+                                st.write(f"Text: {result['text']}")
+                else:
+                    st.write("No Text Detected")
 
             else:
                 st.write("No detections found by YOLO.")
