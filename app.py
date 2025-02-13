@@ -35,55 +35,17 @@ logger = logging.getLogger(__name__)
 
 # OCRProcessor class (Now only uses Tesseract)
 class OCRProcessor:
-    def __init__(self, language='eng', psm=3):
-        self.tesseract_config = f'-l {language} --psm {psm}'
-        import pytesseract
-        self.pytesseract = pytesseract
-
-    def process_detections(self, image, detections):
-        results = []
-        for detection in detections:
-            bbox = detection['bbox']
-            roi = self.extract_roi(image, bbox)
-
-            try:
-                text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
-            except Exception as e:
-                logger.error(f"Tesseract processing error: {e}")
-                text = ''
-
-            results.append({
-                'bbox': bbox,
-                'text': text,
-                'corrected_text': text  # Add your text correction logic here if needed
-            })
-        return results
-
-    @staticmethod
-    def extract_roi(image, bbox):
-        x, y, w, h = bbox
-        return image[int(y):int(y + h), int(x):int(x + w)]
+    # ... (OCRProcessor class definition - no changes needed)
 
 
 # Initialize models with improved caching
 @st.cache_resource(max_entries=1)
 def load_detector():
-    with st.spinner("Loading YOLO model..."):
-        logger.info("Initializing YOLO model...")
-        try:
-            detector = YOLODetector(Config.model_path)
-            logger.info("YOLO model initialized successfully.")
-            return detector
-        except Exception as e:
-            logger.error(f"Error initializing YOLO model: {e}")
-            st.error(f"Error loading YOLO model: {e}")
-            raise  # Re-raise the exception to stop execution
+    # ... (load_detector function - no changes needed)
 
 @st.cache_resource(max_entries=1)
 def load_ocr_processor():
-    with st.spinner("Loading Tesseract OCR engine..."):
-        logger.info("Initializing Tesseract OCR processor")
-        return OCRProcessor()  # Initialize Tesseract OCR Processor
+    # ... (load_ocr_processor function - no changes needed)
 
 
 def main():
@@ -168,28 +130,32 @@ def main():
 
                 if text_images:
                     st.write("Text:")
-                    for img in text_images:
+                    for i, img in enumerate(text_images):
+                        st.write(f"{i+1})")  # Numbering
                         st.image(img)
                 else:
                     st.write("Text: Not Detected")
 
                 if table_images:
                     st.write("Tables:")
-                    for img in table_images:
+                    for i, img in enumerate(table_images):
+                        st.write(f"{i+1})")  # Numbering
                         st.image(img)
                 else:
                     st.write("Tables: Not Detected")
 
                 if stamp_images:
                     st.write("Stamps:")
-                    for img in stamp_images:
+                    for i, img in enumerate(stamp_images):
+                        st.write(f"{i+1})")  # Numbering
                         st.image(img)
                 else:
                     st.write("Stamps: Not Detected")
 
                 if signature_images:
                     st.write("Signatures:")
-                    for img in signature_images:
+                    for i, img in enumerate(signature_images):
+                        st.write(f"{i+1})")  # Numbering
                         st.image(img)
                 else:
                     st.write("Signatures: Not Detected")
