@@ -133,15 +133,76 @@ def process_image(image, detections, ocr_processor, page_num=None, preprocessing
 def main():
     detector = load_detector()
     ocr_processor = load_ocr_processor()
-    st.title("Legal Document digitizer")
+    st.title("Legal Document Digitizer")
     st.write("By Aryan Tandon and Umesh Tiwari")
 
-    # Preprocessing options
-    st.sidebar.title("Preprocessing Options")
-    apply_threshold = st.sidebar.checkbox("Apply Thresholding")
-    apply_deskew = st.sidebar.checkbox("Apply Deskewing")
-    apply_denoise = st.sidebar.checkbox("Apply Denoising")
-    apply_contrast = st.sidebar.checkbox("Apply Contrast Enhancement")
+    # Sidebar for options
+    st.sidebar.title("Document Processing Options")
+    
+    # Language Selection
+    st.sidebar.subheader("Language Settings")
+    available_languages = get_supported_languages()
+    default_lang = 'English'
+    
+    # Primary language selection
+    primary_lang = st.sidebar.selectbox(
+        "Primary Language",
+        options=list(available_languages.keys()),
+        index=list(available_languages.keys()).index(default_lang),
+        help="Select the main language of your document"
+    )
+    
+    # Additional languages selection
+    additional_langs = st.sidebar.multiselect(
+        "Additional Languages (Optional)",
+        options=[lang for lang in available_languages.keys() if lang != primary_lang],
+        help="Select additional languages if your document contains multiple languages"
+    )
+    
+    # Combine selected languages for Tesseract
+    selected_langs = [primary_lang] + additional_langs
+    lang_codes = '+'.join([available_languages[lang] for lang in selected_langs])
+    
+    # PSM Selection
+    psm = st.sidebar.selectbox(
+        "Text Layout Detection",
+        options=[3, 4, 6, 11, 12],
+        index=0,
+        format_func=lambda x: {
+            3: "Automatic Detection",
+            4: "Single Column Layout",
+            6: "Single Text Block",
+            11: "Line by Line",
+            12: "Word by Word"
+        }[x],
+        help="Choose how the system should read your document's layout"
+    )
+    
+    # Update OCR processor with selected language and PSM
+    ocr_processor.update_config(lang_codes, psm)
+
+    # Preprocessing options with better labels
+    st.sidebar.subheader("Image Enhancement Options")
+    apply_threshold = st.sidebar.checkbox(
+        "Sharpen Text", 
+        value=True,
+        help="Improves text clarity by increasing contrast"
+    )
+    apply_deskew = st.sidebar.checkbox(
+        "Straighten Document", 
+        value=True,
+        help="Corrects tilted or skewed documents"
+    )
+    apply_denoise = st.sidebar.checkbox(
+        "Remove Background Noise", 
+        value=True,
+        help="Removes specks and background interference"
+    )
+    apply_contrast = st.sidebar.checkbox(
+        "Enhance Text Visibility", 
+        value=False,
+        help="Boosts text brightness and contrast"
+    )
 
     preprocessing_options = {
         'apply_threshold': apply_threshold,
