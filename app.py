@@ -18,7 +18,7 @@ from utils.config import Config
 from utils.pdf_processing import process_pdf
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
-from utils.ocr_processor import get_supported_languages
+
 st.set_page_config(
     page_title="Legal Document Digitization with YOLO OCR",
     page_icon=":page_facing_up:",
@@ -33,6 +33,14 @@ class OCRProcessor:
         self.tesseract_config = f'-l {language} --psm {psm}'
         import pytesseract
         self.pytesseract = pytesseract
+        
+    def get_supported_languages():
+        """Returns a dictionary of supported languages and their codes."""
+        return {
+            'English': 'eng',
+            'Hindi': 'hin',
+            'Marathi':'mar'
+        }
 
     def update_config(self, language, psm):
         """Update Tesseract configuration with new language and PSM."""
@@ -64,6 +72,7 @@ class OCRProcessor:
     def extract_roi(image, bbox):
         x, y, w, h = bbox
         return image[int(y):int(y + h), int(x):int(x + w)]
+
 
 @st.cache_resource(max_entries=1)
 def load_detector():
