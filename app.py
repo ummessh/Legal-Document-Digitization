@@ -14,11 +14,11 @@ import cv2
 import pandas as pd
 import fitz
 
-from utils.config import Config  # Make sure these paths are correct
+from utils.config import Config 
 from utils.pdf_processing import process_pdf
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
-
+from utils.ocr_processor import get_supported_languages
 st.set_page_config(
     page_title="Legal Document Digitization with YOLO OCR",
     page_icon=":page_facing_up:",
@@ -34,7 +34,11 @@ class OCRProcessor:
         import pytesseract
         self.pytesseract = pytesseract
 
-    def process_detections(self, image, detections, preprocessing_options):
+    def update_config(self, language, psm):
+        """Update Tesseract configuration with new language and PSM."""
+        self.tesseract_config = f'-l {language} --psm {psm}'
+
+    def process_detections(self, image, detections, preprocessing_options=None):
         results = []
         for detection in detections:
             bbox = detection['bbox']
