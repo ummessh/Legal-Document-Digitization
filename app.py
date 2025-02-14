@@ -34,14 +34,17 @@ class OCRProcessor:
         import pytesseract
         self.pytesseract = pytesseract
 
-    def process_detections(self, image, detections):
+    def process_detections(self, image, detections, preprocessing_options):
         results = []
         for detection in detections:
             bbox = detection['bbox']
             roi = self.extract_roi(image, bbox)
 
+            # Preprocess the ROI
+            preprocessed_roi = preprocess_image(roi, preprocessing_options)
+
             try:
-                text = self.pytesseract.image_to_string(roi, config=self.tesseract_config)
+                text = self.pytesseract.image_to_string(preprocessed_roi, config=self.tesseract_config)
             except Exception as e:
                 logger.error(f"Tesseract processing error: {e}")
                 text = ''
@@ -77,7 +80,7 @@ def load_ocr_processor():
         logger.info("Initializing Tesseract OCR processor")
         return OCRProcessor()
 
-def process_image(image, detections, ocr_processor, page_num=None):
+def process_image(image, detections, ocr_processor, page_num=None, preprocessing_options=None):
     image_with_boxes = image.copy()
     text_images = []
     table_images = []
@@ -106,7 +109,7 @@ def process_image(image, detections, ocr_processor, page_num=None):
             roi = image[y:y+h, x:x+w]
 
             if category == "text":
-                ocr_results = ocr_processor.process_detections(image, [detection])
+                ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
                 for result in ocr_results:
                     st.write(f"Category: {category}, Text: {result['text']}")
                 text_images.append(roi)
@@ -127,12 +130,25 @@ def process_image(image, detections, ocr_processor, page_num=None):
             else:
                 st.write(f"Category: {category} (Unknown)")
     return image_with_boxes, text_images, table_images, stamp_images, signature_images
-
 def main():
     detector = load_detector()
     ocr_processor = load_ocr_processor()
     st.title("Legal Document digitizer")
     st.write("By Aryan Tandon and Umesh Tiwari")
+
+    # Preprocessing options
+    st.sidebar.title("Preprocessing Options")
+    apply_threshold = st.sidebar.checkbox("Apply Thresholding")
+    apply_deskew = st.sidebar.checkbox("Apply Deskewing")
+    apply_denoise = st.sidebar.checkbox("Apply Denoising")
+    apply_contrast = st.sidebar.checkbox("Apply Contrast Enhancement")
+
+    preprocessing_options = {
+        'apply_threshold': apply_threshold,
+        'apply_deskew': apply_deskew,
+        'apply_denoise': apply_denoise,
+        'apply_contrast': apply_contrast
+    }
 
     uploaded_file = st.file_uploader("Choose an image or PDF...", type=["jpg", "png", "jpeg", "pdf"])
 
@@ -148,7 +164,7 @@ def main():
                     st.image(image, caption=f"PDF Page {page_num+1}")
 
                     detections = detector.detect(image)
-                    image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, page_num)
+                    image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, page_num, preprocessing_options)
                     st.image(image_with_boxes, caption=f"Image with Detections and Labels (Page {page_num+1})")
 
                     st.subheader(f"Extracted Entities (Page {page_num+1})")
@@ -165,6 +181,7 @@ def main():
                         st.write(f"2) Table: {confidence_dict.get('table', 'null')}")
                         st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")
                         st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")
+
 
                     if text_images:
                         st.write("Text:")
@@ -211,7 +228,7 @@ def main():
                     if text_images:
                         for detection in detections:
                             if 'class' in detection and detection['class'] == 'text':
-                                ocr_results = ocr_processor.process_detections(image, [detection])
+                                ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
                                 for result in ocr_results:
                                     st.write(f"Text: {result['text']}")
                     else:
@@ -231,7 +248,7 @@ def main():
                 st.image(image, caption="Uploaded Image")
 
                 detections = detector.detect(image)
-                image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor)
+                image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, preprocessing_options)
                 st.image(image_with_boxes, caption="Image with Detections and Labels")
 
                 st.subheader("Extracted Entities")
