@@ -28,20 +28,18 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
+def get_supported_languages():
+    """Returns a dictionary of supported languages and their codes."""
+    return {'English': 'eng',
+            'Hindi': 'hin',
+            'Marathi':'mar'
+           }
 class OCRProcessor:
     def __init__(self, language='eng', psm=3):
         self.tesseract_config = f'-l {language} --psm {psm}'
         import pytesseract
         self.pytesseract = pytesseract
         
-    def get_supported_languages():
-        """Returns a dictionary of supported languages and their codes."""
-        return {
-            'English': 'eng',
-            'Hindi': 'hin',
-            'Marathi':'mar'
-        }
-
     def update_config(self, language, psm):
         """Update Tesseract configuration with new language and PSM."""
         self.tesseract_config = f'-l {language} --psm {psm}'
@@ -72,8 +70,7 @@ class OCRProcessor:
     def extract_roi(image, bbox):
         x, y, w, h = bbox
         return image[int(y):int(y + h), int(x):int(x + w)]
-
-
+        
 @st.cache_resource(max_entries=1)
 def load_detector():
     with st.spinner("Loading YOLO model..."):
