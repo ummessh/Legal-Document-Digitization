@@ -7,17 +7,14 @@ import torch
 import numpy as np
 from PIL import Image
 import os
-import subprocess
 import logging
 import sys
-import gc
 import io
-import zipfile
 import cv2
 import pandas as pd
 import fitz
 
-from utils.config import Config
+from utils.config import Config  # Make sure these paths are correct
 from utils.pdf_processing import process_pdf
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
@@ -80,7 +77,7 @@ def load_ocr_processor():
         logger.info("Initializing Tesseract OCR processor")
         return OCRProcessor()
 
-def process_image(image, detections, ocr_processor, page_num=None):  # Add page_num
+def process_image(image, detections, ocr_processor, page_num=None):
     image_with_boxes = image.copy()
     text_images = []
     table_images = []
