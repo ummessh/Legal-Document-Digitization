@@ -13,3 +13,4 @@ sentencepiece==0.2.0
 transformers==4.36.0
 huggingface_hub==0.20.0
 setuptools
+pymupdf
