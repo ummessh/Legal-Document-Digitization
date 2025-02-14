@@ -232,11 +232,11 @@ def main():
                     pix = page.get_pixmap()
                     image = Image.open(io.BytesIO(pix.tobytes())).convert("RGB")
                     image = np.array(image)
-                    st.image(image, caption=f"PDF Page {page_num+1}")
+                    st.image(image, caption=f"PDF Page {page_num+1}",width=400)
 
                     detections = detector.detect(image)
                     image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, page_num, preprocessing_options)
-                    st.image(image_with_boxes, caption=f"Image with Detections and Labels (Page {page_num+1})")
+                    st.image(image_with_boxes, caption=f"Image with Detections and Labels (Page {page_num+1})",width=400)
 
                     st.subheader(f"Extracted Entities (Page {page_num+1})")
                     entity_counter = 1
@@ -258,7 +258,7 @@ def main():
                         st.write("Text:")
                         for img in text_images:
                             st.write(f"{entity_counter})")
-                            st.image(img)
+                            st.image(img,width=400)
                             entity_counter += 1
                     else:
                         st.write(f"{entity_counter}) Text: Not Detected")
@@ -268,7 +268,7 @@ def main():
                         st.write("Tables:")
                         for img in table_images:
                             st.write(f"{entity_counter})")
-                            st.image(img)
+                            st.image(img,width=400)
                             entity_counter += 1
                     else:
                         st.write(f"{entity_counter}) Tables: Not Detected")
@@ -278,7 +278,7 @@ def main():
                         st.write("Stamps:")
                         for img in stamp_images:
                             st.write(f"{entity_counter})")
-                            st.image(img)
+                            st.image(img,width=400)
                             entity_counter += 1
                     else:
                         st.write(f"{entity_counter}) Stamps: Not Detected")
@@ -288,7 +288,7 @@ def main():
                         st.write("Signatures:")
                         for img in signature_images:
                             st.write(f"{entity_counter})")
-                            st.image(img)
+                            st.image(img,width=400)
                             entity_counter += 1
                     else:
                         st.write(f"{entity_counter}) Signatures: Not Detected")
@@ -316,11 +316,11 @@ def main():
             else:  # It's an image
                 image = Image.open(uploaded_file).convert("RGB")
                 image = np.array(image)
-                st.image(image, caption="Uploaded Image")
+                st.image(image, caption="Uploaded Image",width=400)
 
                 detections = detector.detect(image)
                 image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, preprocessing_options)
-                st.image(image_with_boxes, caption="Image with Detections and Labels")
+                st.image(image_with_boxes, caption="Image with Detections and Labels",width=400)
 
                 st.subheader("Extracted Entities")
                 entity_counter = 1
@@ -341,7 +341,7 @@ def main():
                     st.write("Text:")
                     for img in text_images:
                         st.write(f"{entity_counter})")
-                        st.image(img)
+                        st.image(img,width=400)
                         entity_counter += 1
                 else:
                     st.write(f"{entity_counter}) Text: Not Detected")
@@ -351,7 +351,7 @@ def main():
                     st.write("Tables:")
                     for img in table_images:
                         st.write(f"{entity_counter})")
-                        st.image(img)
+                        st.image(img,width=400)
                         entity_counter += 1
                 else:
                     st.write(f"{entity_counter}) Tables: Not Detected")
@@ -361,7 +361,7 @@ def main():
                     st.write("Stamps:")
                     for img in stamp_images:
                         st.write(f"{entity_counter})")
-                        st.image(img)
+                        st.image(img,width=400)
                         entity_counter += 1
                 else:
                     st.write(f"{entity_counter}) Stamps: Not Detected")
@@ -371,7 +371,7 @@ def main():
                     st.write("Signatures:")
                     for img in signature_images:
                         st.write(f"{entity_counter})")
-                        st.image(img)
+                        st.image(img,width=400)
                         entity_counter += 1
                 else:
                     st.write(f"{entity_counter}) Signatures: Not Detected")
