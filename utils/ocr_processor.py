@@ -15,6 +15,14 @@ class OCRProcessor:
         except Exception as e:
             logging.warning(f"Error loading IndicBART model: {e}")
 
+    def get_supported_languages():
+    """Returns a dictionary of supported languages and their codes."""
+    return {
+        'English': 'eng',
+        'Hindi': 'hin',
+        'Marathi':'mar'
+    }
+
     def extract_text(self, image):
         """Extracts text from an image using Tesseract OCR."""
         config = f"--oem 3 --psm {self.psm} preserve_interword_spaces=1"
