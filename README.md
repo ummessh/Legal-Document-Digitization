@@ -22,15 +22,8 @@ This system automates the digitization of legal documents through a sophisticate
     - Signatures
 
 - **Advanced OCR Pipeline**
-  - Region-specific text extraction using PyTesseract
+  - Region-specific text extraction using YOLO detections.
   - Legal domain-specific error correction
-  - Named Entity Recognition (NER) for structured data extraction
-
-- **Structured Data Storage**
-  - SQLite database integration
-  - Efficient document retrieval system
-  - Full-text search capabilities
-  - Support for querying data using RAG (Retrieval-Augmented Generation) or SQL
 
 ---
 
@@ -47,8 +40,7 @@ To run this project, you need the following dependencies:
 - YOLOv8
 - OpenCV
 - PyTesseract
-- SQLite
-- Django (for web interface)
+- Streamlit
 ```
 
 ### Installation
