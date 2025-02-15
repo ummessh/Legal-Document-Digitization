@@ -1,4 +1,4 @@
-#📄 Legal Document Digitization System
+# 📄 Legal Document Digitization System
 
 An advanced document processing system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision and machine learning techniques.
 
