@@ -1,6 +1,8 @@
 # 📄 Legal Document Digitization System
 
-An advanced document processing system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision and machine learning techniques.
+ You can try it out [here.](https://legal-document-digitization.streamlit.app/#legal-document-digitizer)
+ 
+ A Document digitization system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision, Optical Character Recognition and error correction techniques.
 
 ## 🎯 Project Overview
 
