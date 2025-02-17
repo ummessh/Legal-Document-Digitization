@@ -11,3 +11,7 @@ ultralytics==8.0.196
 sentencepiece==0.2.0
 transformers==4.36.0
 huggingface_hub==0.20.0
+pandas>=2.0.0
+camelot-py>=0.11.0
+python-poppler>=0.3.0
+ghostscript>=0.7
