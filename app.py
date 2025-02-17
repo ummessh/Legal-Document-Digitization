@@ -146,15 +146,44 @@ def main():
     st.title("Legal Document Digitizer")
     st.write("By Aryan Tandon and Umesh Tiwari")
 
+    st.markdown(  # Injecting CSS using st.markdown
+        """
+        <style>
+        .rounded-box {
+            border-radius: 10px;
+            background-color: #f0f0f0;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+        .confidence-box {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .confidence-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .entity-image {
+            border: 1px solid #ccc;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Sidebar for options
     st.sidebar.title("Document Processing Options")
 
     # Language Selection
     st.sidebar.subheader("Language Settings")
-    available_languages = get_supported_languages()
+    available_languages = get_supported_languages()  # Assuming this function is defined
     default_lang = 'English'
 
-    # Primary language selection
     primary_lang = st.sidebar.selectbox(
         "Primary Language",
         options=list(available_languages.keys()),
@@ -162,21 +191,18 @@ def main():
         help="Select the main language of your document"
     )
 
-    # Additional languages selection
     additional_langs = st.sidebar.multiselect(
         "Additional Languages (Optional)",
         options=[lang for lang in available_languages.keys() if lang != primary_lang],
         help="Select additional languages if your document contains multiple languages"
     )
 
-    # Combine selected languages for Tesseract
     selected_langs = [primary_lang] + additional_langs
     lang_codes = '+'.join([available_languages[lang] for lang in selected_langs])
 
-    # PSM Selection
     psm = st.sidebar.selectbox(
         "Text Layout Detection",
-        options=[3, 4, 6, 11, 12],
+        options=[3, 4, 6, 11, 12],  # Assuming these are the PSM options
         index=0,
         format_func=lambda x: {
             3: "Automatic Detection",
@@ -188,31 +214,13 @@ def main():
         help="Choose how the system should read your document's layout"
     )
 
-    # Update OCR processor with selected language and PSM
-    ocr_processor.update_config(lang_codes, psm)
+    ocr_processor.update_config(lang_codes, psm)  # Assuming ocr_processor is defined
 
-    # Preprocessing options with better labels
     st.sidebar.subheader("Image Enhancement Options")
-    apply_threshold = st.sidebar.checkbox(
-        "Sharpen Text",
-        value=True,
-        help="Improves text clarity by increasing contrast"
-    )
-    apply_deskew = st.sidebar.checkbox(
-        "Straighten Document",
-        value=True,
-        help="Corrects tilted or skewed documents"
-    )
-    apply_denoise = st.sidebar.checkbox(
-        "Remove Background Noise",
-        value=True,
-        help="Removes specks and background interference"
-    )
-    apply_contrast = st.sidebar.checkbox(
-        "Enhance Text Visibility",
-        value=False,
-        help="Boosts text brightness and contrast"
-    )
+    apply_threshold = st.sidebar.checkbox("Sharpen Text", value=True, help="Improves text clarity by increasing contrast")
+    apply_deskew = st.sidebar.checkbox("Straighten Document", value=True, help="Corrects tilted or skewed documents")
+    apply_denoise = st.sidebar.checkbox("Remove Background Noise", value=True, help="Removes specks and background interference")
+    apply_contrast = st.sidebar.checkbox("Enhance Text Visibility", value=False, help="Boosts text brightness and contrast")
 
     preprocessing_options = {
         'apply_threshold': apply_threshold,
