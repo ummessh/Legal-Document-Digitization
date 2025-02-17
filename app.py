@@ -14,10 +14,10 @@ import cv2
 import pandas as pd
 import fitz
 
-from utils.config import Config 
-from utils.pdf_processing import process_pdf
-from utils.image_processing import preprocess_image
-from models.yolo_detector import YOLODetector
+from utils.config import Config  # Make sure this import is correct
+from utils.pdf_processing import process_pdf  # And this one
+from utils.image_processing import preprocess_image  # And this one
+from models.yolo_detector import YOLODetector  # And this one
 
 st.set_page_config(
     page_title="Legal Document Digitization with YOLO OCR",
@@ -32,14 +32,20 @@ def get_supported_languages():
     """Returns a dictionary of supported languages and their codes."""
     return {'English': 'eng',
             'Hindi': 'hin',
-            'Marathi':'mar'
+            'Marathi': 'mar'
            }
+
 class OCRProcessor:
     def __init__(self, language='eng', psm=3):
         self.tesseract_config = f'-l {language} --psm {psm}'
-        import pytesseract
-        self.pytesseract = pytesseract
-        
+        try:
+            import pytesseract
+            self.pytesseract = pytesseract
+        except ImportError:
+            logger.error("pytesseract is not installed. Please install it using 'pip install pytesseract'")
+            st.error("pytesseract is not installed. Please install it.")
+            sys.exit(1) # Or handle it differently
+
     def update_config(self, language, psm):
         """Update Tesseract configuration with new language and PSM."""
         self.tesseract_config = f'-l {language} --psm {psm}'
@@ -62,7 +68,7 @@ class OCRProcessor:
             results.append({
                 'bbox': bbox,
                 'text': text,
-                'corrected_text': text
+                'corrected_text': text  # Placeholder for later correction
             })
         return results
 
@@ -70,19 +76,20 @@ class OCRProcessor:
     def extract_roi(image, bbox):
         x, y, w, h = bbox
         return image[int(y):int(y + h), int(x):int(x + w)]
-        
+
 @st.cache_resource(max_entries=1)
 def load_detector():
     with st.spinner("Loading YOLO model..."):
         logger.info("Initializing YOLO model...")
         try:
-            detector = YOLODetector(Config.model_path)
+            detector = YOLODetector(Config.model_path)  # Check your Config class and path
             logger.info("YOLO model initialized successfully.")
             return detector
         except Exception as e:
             logger.error(f"Error initializing YOLO model: {e}")
             st.error(f"Error loading YOLO model: {e}")
-            raise
+            raise  # Re-raise the exception to stop execution
+
 
 @st.cache_resource(max_entries=1)
 def load_ocr_processor():
@@ -103,16 +110,7 @@ def process_image(image, detections, ocr_processor, page_num=None, preprocessing
             x, y, w, h = map(int, bbox)
             cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            if 'class' in detection:
-                category = detection['class']
-            elif 'confidence' in detection:
-                confidence = detection['confidence']
-                if confidence > 0.8:
-                    category = "text"
-                else:
-                    category = "unknown"
-            else:
-                category = "unknown"
+            category = detection.get('class', detection.get('category', 'unknown')) # Improved category retrieval
 
             cv2.putText(image_with_boxes, str(category), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
@@ -121,11 +119,11 @@ def process_image(image, detections, ocr_processor, page_num=None, preprocessing
             if category == "text":
                 ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
                 for result in ocr_results:
-                    st.write(f"Category: {category}, Text: {result['text']}")
+                    st.write(f"Category: {category}, Text: {result['text']}")  # Keep this for now
                 text_images.append(roi)
             elif category == "table":
                 try:
-                    df = pd.DataFrame()  # Placeholder - Replace with actual conversion
+                    df = pd.DataFrame()  # Placeholder - Replace with actual table extraction
                     st.dataframe(df)
                     table_images.append(roi)
                 except Exception as e:
@@ -139,7 +137,9 @@ def process_image(image, detections, ocr_processor, page_num=None, preprocessing
                 signature_images.append(roi)
             else:
                 st.write(f"Category: {category} (Unknown)")
+
     return image_with_boxes, text_images, table_images, stamp_images, signature_images
+    
 def main():
     detector = load_detector()
     ocr_processor = load_ocr_processor()
@@ -148,12 +148,12 @@ def main():
 
     # Sidebar for options
     st.sidebar.title("Document Processing Options")
-    
+
     # Language Selection
     st.sidebar.subheader("Language Settings")
     available_languages = get_supported_languages()
     default_lang = 'English'
-    
+
     # Primary language selection
     primary_lang = st.sidebar.selectbox(
         "Primary Language",
@@ -161,18 +161,18 @@ def main():
         index=list(available_languages.keys()).index(default_lang),
         help="Select the main language of your document"
     )
-    
+
     # Additional languages selection
     additional_langs = st.sidebar.multiselect(
         "Additional Languages (Optional)",
         options=[lang for lang in available_languages.keys() if lang != primary_lang],
         help="Select additional languages if your document contains multiple languages"
     )
-    
+
     # Combine selected languages for Tesseract
     selected_langs = [primary_lang] + additional_langs
     lang_codes = '+'.join([available_languages[lang] for lang in selected_langs])
-    
+
     # PSM Selection
     psm = st.sidebar.selectbox(
         "Text Layout Detection",
@@ -187,29 +187,29 @@ def main():
         }[x],
         help="Choose how the system should read your document's layout"
     )
-    
+
     # Update OCR processor with selected language and PSM
     ocr_processor.update_config(lang_codes, psm)
 
     # Preprocessing options with better labels
     st.sidebar.subheader("Image Enhancement Options")
     apply_threshold = st.sidebar.checkbox(
-        "Sharpen Text", 
+        "Sharpen Text",
         value=True,
         help="Improves text clarity by increasing contrast"
     )
     apply_deskew = st.sidebar.checkbox(
-        "Straighten Document", 
+        "Straighten Document",
         value=True,
         help="Corrects tilted or skewed documents"
     )
     apply_denoise = st.sidebar.checkbox(
-        "Remove Background Noise", 
+        "Remove Background Noise",
         value=True,
         help="Removes specks and background interference"
     )
     apply_contrast = st.sidebar.checkbox(
-        "Enhance Text Visibility", 
+        "Enhance Text Visibility",
         value=False,
         help="Boosts text brightness and contrast"
     )
@@ -232,11 +232,11 @@ def main():
                     pix = page.get_pixmap()
                     image = Image.open(io.BytesIO(pix.tobytes())).convert("RGB")
                     image = np.array(image)
-                    st.image(image, caption=f"PDF Page {page_num+1}",width=400)
+                    st.image(image, caption=f"PDF Page {page_num+1}", width=400)
 
                     detections = detector.detect(image)
                     image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, page_num, preprocessing_options)
-                    st.image(image_with_boxes, caption=f"Image with Detections and Labels (Page {page_num+1})",width=400)
+                    st.image(image_with_boxes, caption=f"Image with Detections and Labels (Page {page_num+1})", width=400)
 
                     st.subheader(f"Extracted Entities (Page {page_num+1})")
                     entity_counter = 1
@@ -253,46 +253,17 @@ def main():
                         st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")
                         st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")
 
-
-                    if text_images:
-                        st.write("Text:")
-                        for img in text_images:
-                            st.write(f"{entity_counter})")
-                            st.image(img,width=400)
+                    # Display extracted entities (images)
+                    for entity_type, images in [("Text", text_images), ("Tables", table_images), ("Stamps", stamp_images), ("Signatures", signature_images)]:
+                        if images:
+                            st.write(f"{entity_type}:")
+                            for img in images:
+                                st.write(f"{entity_counter})")
+                                st.image(img, width=400)
+                                entity_counter += 1
+                        else:
+                            st.write(f"{entity_counter}) {entity_type}: Not Detected")
                             entity_counter += 1
-                    else:
-                        st.write(f"{entity_counter}) Text: Not Detected")
-                        entity_counter += 1
-
-                    if table_images:
-                        st.write("Tables:")
-                        for img in table_images:
-                            st.write(f"{entity_counter})")
-                            st.image(img,width=400)
-                            entity_counter += 1
-                    else:
-                        st.write(f"{entity_counter}) Tables: Not Detected")
-                        entity_counter += 1
-
-                    if stamp_images:
-                        st.write("Stamps:")
-                        for img in stamp_images:
-                            st.write(f"{entity_counter})")
-                            st.image(img,width=400)
-                            entity_counter += 1
-                    else:
-                        st.write(f"{entity_counter}) Stamps: Not Detected")
-                        entity_counter += 1
-
-                    if signature_images:
-                        st.write("Signatures:")
-                        for img in signature_images:
-                            st.write(f"{entity_counter})")
-                            st.image(img,width=400)
-                            entity_counter += 1
-                    else:
-                        st.write(f"{entity_counter}) Signatures: Not Detected")
-                        entity_counter += 1
 
                     st.write("## Extracted Text:")
 
@@ -316,11 +287,11 @@ def main():
             else:  # It's an image
                 image = Image.open(uploaded_file).convert("RGB")
                 image = np.array(image)
-                st.image(image, caption="Uploaded Image",width=400)
+                st.image(image, caption="Uploaded Image", width=400)
 
                 detections = detector.detect(image)
                 image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(image, detections, ocr_processor, preprocessing_options)
-                st.image(image_with_boxes, caption="Image with Detections and Labels",width=400)
+                st.image(image_with_boxes, caption="Image with Detections and Labels", width=400)
 
                 st.subheader("Extracted Entities")
                 entity_counter = 1
@@ -337,56 +308,29 @@ def main():
                     st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")
                     st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")
 
-                if text_images:
-                    st.write("Text:")
-                    for img in text_images:
-                        st.write(f"{entity_counter})")
-                        st.image(img,width=400)
+                # Display extracted entities (images) - DRY principle
+                for entity_type, images in [("Text", text_images), ("Tables", table_images), ("Stamps", stamp_images), ("Signatures", signature_images)]:
+                    if images:
+                        st.write(f"{entity_type}:")
+                        for img in images:
+                            st.write(f"{entity_counter})")
+                            st.image(img, width=400)
+                            entity_counter += 1
+                    else:
+                        st.write(f"{entity_counter}) {entity_type}: Not Detected")
                         entity_counter += 1
-                else:
-                    st.write(f"{entity_counter}) Text: Not Detected")
-                    entity_counter += 1
-
-                if table_images:
-                    st.write("Tables:")
-                    for img in table_images:
-                        st.write(f"{entity_counter})")
-                        st.image(img,width=400)
-                        entity_counter += 1
-                else:
-                    st.write(f"{entity_counter}) Tables: Not Detected")
-                    entity_counter += 1
-
-                if stamp_images:
-                    st.write("Stamps:")
-                    for img in stamp_images:
-                        st.write(f"{entity_counter})")
-                        st.image(img,width=400)
-                        entity_counter += 1
-                else:
-                    st.write(f"{entity_counter}) Stamps: Not Detected")
-                    entity_counter += 1
-
-                if signature_images:
-                    st.write("Signatures:")
-                    for img in signature_images:
-                        st.write(f"{entity_counter})")
-                        st.image(img,width=400)
-                        entity_counter += 1
-                else:
-                    st.write(f"{entity_counter}) Signatures: Not Detected")
-                    entity_counter += 1
 
                 st.write("## Extracted Text:")
 
                 if text_images:
                     for detection in detections:
                         if 'class' in detection and detection['class'] == 'text':
-                            ocr_results = ocr_processor.process_detections(image, [detection])
+                            ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
                             for result in ocr_results:
                                 st.write(f"Text: {result['text']}")
                 else:
                     st.write("No Text Detected")
+
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
