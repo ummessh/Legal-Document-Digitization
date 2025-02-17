@@ -5,6 +5,3 @@ tesseract-ocr-eng
 tesseract-ocr-hin
 tesseract-ocr-mar
 poppler-utils
-python3-opencv
-pkg-config
-python3-dev
