@@ -12,4 +12,5 @@ sentencepiece==0.2.0
 transformers==4.36.0
 huggingface_hub==0.20.0
 pandas==2.1.4
+camelot-py==0.11.0
 python-poppler==0.3.0
