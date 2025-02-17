@@ -1,7 +1,10 @@
-libgl1
-tesseract-ocr
-libtesseract-dev
-tesseract-ocr-eng
-tesseract-ocr-hin
-tesseract-ocr-mar
-poppler-utils
+streamlit
+numpy
+Pillow
+opencv-python-headless
+PyMuPDF
+pandas
+pytesseract
+python-poppler
+camelot-py
+ghostscript
