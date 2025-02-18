@@ -430,19 +430,22 @@ def main():
 
             st.write("## Extracted Text:")
 
-            if text_images:
-                for detection in detections:
-                    if "class" in detection and detection["class"] == "text":
-                        ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
-                        for result in ocr_results:
-                            st.write(f"Text: {result['text']}")
-            else:
-                st.write("No Text Detected")
+                if text_images:
+                    for detection in detections:
+                        if "class" in detection and detection["class"] == "text":
+                            ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
+                            for result in ocr_results:
+                                st.write(f"Text: {result['text']}")
+                else:
+                    st.write("No Text Detected")
+
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                logger.exception(f"An error occurred: {e}")
 
     except Exception as e:
-        st.error(f"An error occurred: {e}")
-        logger.exception(f"An error occurred: {e}")
-
+        st.error(f"An outer error occurred: {e}")
+        logger.exception(f"An outer error occurred: {e}")
 
 if __name__ == "__main__":
     main()
