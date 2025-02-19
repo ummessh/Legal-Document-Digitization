@@ -28,12 +28,48 @@ st.set_page_config(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
+def process_pdf_page(page, dpi=300):
+    """
+    Process a single PDF page and convert it to a numpy array.
+    
+    Args:
+        page: fitz.Page object
+        dpi: int, resolution for rendering (default: 300)
+    
+    Returns:
+        tuple: (numpy array of the image, error message if any)
+    """
+    try:
+        # Get the page's pixel matrix
+        pix = page.get_pixmap(matrix=fitz.Matrix(dpi/72, dpi/72))
+        
+        # Convert to numpy array
+        image_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+            pix.height, pix.width, pix.n
+        )
+        
+        # If the image is CMYK (4 channels), convert to RGB (3 channels)
+        if pix.n == 4:
+            # Create RGB image
+            image_rgb = np.zeros((pix.height, pix.width, 3), dtype=np.uint8)
+            # Simple CMYK to RGB conversion
+            image_rgb[:, :, 0] = image_np[:, :, 0] * (1 - image_np[:, :, 3] / 255.0)
+            image_rgb[:, :, 1] = image_np[:, :, 1] * (1 - image_np[:, :, 3] / 255.0)
+            image_rgb[:, :, 2] = image_np[:, :, 2] * (1 - image_np[:, :, 3] / 255.0)
+            image_np = image_rgb
+
+        return image_np, None
+        
+    except Exception as e:
+        return None, str(e)
+
 def get_supported_languages():
     """Returns a dictionary of supported languages and their codes."""
     return {'English': 'eng',
             'Hindi': 'hin',
             'Marathi':'mar'
            }
+
 class OCRProcessor:
     def __init__(self, language='eng', psm=3):
         self.tesseract_config = f'-l {language} --psm {psm}'
