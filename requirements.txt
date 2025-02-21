@@ -8,4 +8,5 @@ PyMuPDF==1.23.25
 torch==2.2.1
 torchvision==0.17.1
 ultralytics==8.0.196
+transformers==4.36.0
 langchain
