@@ -14,7 +14,7 @@ import cv2
 import pandas as pd
 
 from utils.config import Config 
-from utils.pdf_processing import PDFProcessor
+from utils.pdf_processor import PDFProcessor
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
 
