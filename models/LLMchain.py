@@ -1,19 +1,58 @@
-from langchain.llms.base import LLM
+import streamlit as st
 import requests
 import json
+from langchain.llms.base import LLM
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.schema.runnable import RunnablePassthrough
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+import os
 
-class GroqLLM(LLM):
-    def __init__(self, 
-                 api_key: str, 
-                 model_name: str = "mixtral-8x7b-32768", # Groq's version of Mixtral[Used for it's multilingual capabilities]
-                 temperature: float = 0.0,
-                 max_tokens: int = 1024):
-        super().__init__()
-        self.api_key = api_key
-        self.model_name = model_name
-        self.temperature = temperature
-        self.max_tokens = max_tokens
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+prompt_template = """
+You are an expert in error correction and entity extraction, with expertise in multilingual processing (English, हिन्दी, मराठी).
+Analyze the given text and perform the following tasks:
+1. Named Entity Recognition: Identify key roles such as:
+   - PERSON: Names of individuals (eg. Mahesh, Suresh, etc)
+   - ORG: Organizations (Issuing Authority, Companies involved)
+   - DATE: Important dates (Issue Date, Expiry Date, Agreement Date)
+   - LOC: Locations mentioned in the document
+   - OTHER: Any other relevant entities (e.g., Contract Number, Registration ID)
+2. Summarization: Provide a brief summary of the document covering:
+   - Document Type (Certificate, Agreement, Contract, etc.)
+   - Purpose of the document
+   - Key points (Validity, Terms, Clauses)
+
+**Text:**
+{text}
+
+**IMPORTANT RULES**
+1. The targeted domain of the text is legal documentation
+2. CRITICAL: ALL output fields (document_type, summary, etc.) MUST be in the SAME LANGUAGE AND SCRIPT as the input text
+3. If input is in Hindi script (देवनागरी), respond entirely in Hindi script
+4. If input is in Marathi, respond entirely in Marathi
+5. If input is in English, respond in English
+
+Respond in this exact JSON format:
+{{
+   "entities Recognised": [
+        {{
+            "text": "extracted entity",
+            "type": "entity type (PERSON, ORG, DATE, LOC, OTHER)"
+        }}
+    "document_type": "Detected document type (in same script as input)",
+    "summary": "Brief summary of the document (in same script as input)",
+    ]
+}}
+"""
+
+class GroqLLM(LLM, BaseModel):
+    api_key: str = GROQ_API_KEY
+    model_name: str = "mixtral-8x7b-32768"
+    temperature: float = 0.0
+    max_tokens: int = 1024
 
     @property
     def _llm_type(self) -> str:
@@ -51,49 +90,15 @@ class GroqLLM(LLM):
             "max_tokens": self.max_tokens
         }
 
-# Create the chain
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
-
-prompt_template = """
-You are an expert in text correction and Named Entity Recognition (NER).
-Correct OCR errors in the following text and extract named entities (for English, Marathi, and Hindi).
-
-OCR Text: {ocr_text}
-
-Respond in JSON format:
-{
-  "corrected_text": "fixed text",
-  "entities": [{"entity": "entity_name", "type": "entity_type"}]
-}
-"""
-
-def process_legal_text(api_key: str, text: str) -> Dict:
+def process_legal_text(text: str) -> Dict:
     try:
-        # Initialize Groq LLM
-        llm = GroqLLM(
-            api_key=api_key,
-            model_name="mixtral-8x7b-32768",
-            temperature=0.1  # Low temperature for more consistent outputs
-        )
-        
-        # Create and run chain
+        if not GROQ_API_KEY:
+            raise ValueError("API key not found in environment variables")
+
+        llm = GroqLLM()
         prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-        chain = LLMChain(llm=llm, prompt=prompt)
-        response = chain.run(text=text)
-        
-        # Parse and validate response
-        result = json.loads(response)
-        
-        # Basic validation
-        if not isinstance(result, dict):
-            raise ValueError("Invalid response format")
-        if "entities" not in result:
-            raise ValueError("No entities found in response")
-            
-        return result
-        
-    except json.JSONDecodeError:
-        return {"error": "Failed to parse LLM response"}
+        chain = prompt | llm | RunnablePassthrough()
+        response = chain.invoke({"text": text})
+        return json.loads(response)
     except Exception as e:
         return {"error": f"Processing failed: {str(e)}"}
