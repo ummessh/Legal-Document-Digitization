@@ -3,6 +3,8 @@
 <a href="https://universe.roboflow.com/major-a0zsb/documents-dataset-yygxz">
     <img src="https://app.roboflow.com/images/download-dataset-badge.svg"></img>
 </a>
+
+
  You can try it out [here.](https://legal-document-digitization.streamlit.app/#legal-document-digitizer)
  
  A Document digitization system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision, Optical Character Recognition and error correction techniques.
