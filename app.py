@@ -18,7 +18,8 @@ from utils.config import Config
 from utils.pdf_processing import process_pdf
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
-
+# CHANGES
+from models.LLMchain.py import process_legal_text
 st.set_page_config(
     page_title="Legal Document Digitization with YOLO OCR",
     page_icon=":page_facing_up:",
@@ -357,20 +358,28 @@ def main():
                         else:
                             st.write(f"{entity_counter}) Signatures: Not Detected")
                             entity_counter += 1
-
+#CHANGES Start
                         st.write("## Extracted Text:")
-
                         if text_images:
+                            combined_text = ""
                             for detection in detections:
                                 if "class" in detection and detection["class"] == "text":
-                                    ocr_results = ocr_processor.process_detections(
-                                        image_np, [detection], preprocessing_options
-                                    )
+                                    ocr_results = ocr_processor.process_detections(image_np, [detection], preprocessing_options)
                                     for result in ocr_results:
                                         st.write(f"Text: {result['text']}")
+                                        combined_text += result['text'] + "\n"
+                            
+                            if combined_text.strip():
+                                st.subheader("LLM Analysis")
+                                with st.spinner("Analyzing text with LLM..."):
+                                    llm_results = process_legal_text(combined_text)
+                                    if "error" not in llm_results:
+                                        st.json(llm_results)
+                                    else:
+                                        st.error(llm_results["error"])
                         else:
                             st.write("No Text Detected")
-
+#CHANGES End
                         # Clear lists for the next page
                         text_images = []
                         table_images = []
@@ -461,17 +470,28 @@ def main():
                     entity_counter += 1
 
                 try:
-                    st.write("## Extracted Text:")
+#CHANGES start
+                   st.write("## Extracted Text:")
                     if text_images:
+                        combined_text = ""
                         for detection in detections:
                             if "class" in detection and detection["class"] == "text":
-                                ocr_results = ocr_processor.process_detections(
-                                    image, [detection], preprocessing_options
-                                )
+                                ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
                                 for result in ocr_results:
                                     st.write(f"Text: {result['text']}")
+                                    combined_text += result['text'] + "\n"
+                        
+                        if combined_text.strip():
+                            st.subheader("LLM Analysis")
+                            with st.spinner("Analyzing text with LLM..."):
+                                llm_results = process_legal_text(combined_text)
+                                if "error" not in llm_results:
+                                    st.json(llm_results)
+                                else:
+                                    st.error(llm_results["error"])
                     else:
                         st.write("No Text Detected")
+#CHANGES end
                 except Exception as e:
                     st.error(f"An error occurred during image text extraction: {e}")
                     logger.exception(f"An error occurred during image text extraction: {e}")
