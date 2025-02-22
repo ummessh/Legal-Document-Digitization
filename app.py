@@ -471,8 +471,9 @@ def main():
 
                 try:#CHANGES start
                     st.write("## Extracted Text:")
+                    combined_text = ""
                     if text_images:
-                        combined_text = ""
+                       
                         for detection in detections:
                             if "class" in detection and detection["class"] == "text":
                                 ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
