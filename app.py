@@ -469,9 +469,8 @@ def main():
                     st.write(f"{entity_counter}) Signatures: Not Detected")
                     entity_counter += 1
 
-                try:
-#CHANGES start
-                   st.write("## Extracted Text:")
+                try:#CHANGES start
+                    st.write("## Extracted Text:")
                     if text_images:
                         combined_text = ""
                         for detection in detections:
