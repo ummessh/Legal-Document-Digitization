@@ -19,7 +19,7 @@ from utils.pdf_processing import process_pdf
 from utils.image_processing import preprocess_image
 from models.yolo_detector import YOLODetector
 # CHANGES
-from models.LLMchain.py import process_legal_text
+from models.LLMchain import process_legal_text
 st.set_page_config(
     page_title="Legal Document Digitization with YOLO OCR",
     page_icon=":page_facing_up:",
