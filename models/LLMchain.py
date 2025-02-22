@@ -95,14 +95,14 @@ def process_legal_text(text: str) -> Dict:
       MAX_CHARS = 10000
       if len(text) > MAX_CHARS:
          text = text[:MAX_CHARS] + "..."
-    try:
-        if not GROQ_API_KEY:
-            raise ValueError("API key not found in environment variables")
-        llm = GroqLLM()
-        prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-        chain = prompt | llm | RunnablePassthrough()
-        response = chain.invoke({"text": text})
-        return json.loads(response)
+   try:
+      if not GROQ_API_KEY:
+         raise ValueError("API key not found in environment variables")
+         llm = GroqLLM()
+         prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
+         chain = prompt | llm | RunnablePassthrough()
+         response = chain.invoke({"text": text})
+         return json.loads(response)
     except Exception as e:
         return {"error": f"Processing failed: {str(e)}"}
 def process_legal_text(text: str) -> Dict:
