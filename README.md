@@ -1,5 +1,8 @@
 # 📄 Legal Document Digitization System
 
+<a href="https://universe.roboflow.com/major-a0zsb/documents-dataset-yygxz">
+    <img src="https://app.roboflow.com/images/download-dataset-badge.svg"></img>
+</a>
  You can try it out [here.](https://legal-document-digitization.streamlit.app/#legal-document-digitizer)
  
  A Document digitization system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision, Optical Character Recognition and error correction techniques.
@@ -147,24 +150,6 @@ This project is licensed under the **Apache 2.0 License**. See the [LICENSE](htt
 ## 🙏 Acknowledgments
 
 - **Roboflow** for dataset annotation tools.
-- <a href="https://universe.roboflow.com/major-a0zsb/documents-dataset-yygxz">
-    <img src="https://app.roboflow.com/images/download-dataset-badge.svg"></img>
-</a>
 - **IL-TUR Benchmark** for providing domain context for NER in Indian legal documents.
 - **YOLOv8** and **PyTesseract** communities for their excellent tools and documentation.
 
-### Citation for NER Domain Context
-
-WE are considering the following work for refernece/research for our NER module.
-
-```bibtex
-@inproceedings{iltur-2024,
-  title = "IL-TUR: Benchmark for Indian Legal Text Understanding and Reasoning",
-  author = "Joshi, Abhinav and Paul, Shounak and Sharma, Akshat and Goyal, Pawan and Ghosh, Saptarshi and Modi, Ashutosh",
-  booktitle = "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
-  month = aug,
-  year = "2024",
-  address = "Bangkok, Thailand",
-  publisher = "Association for Computational Linguistics",
-}
-```
