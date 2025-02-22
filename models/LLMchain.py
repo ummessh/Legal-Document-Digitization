@@ -15,7 +15,7 @@ prompt_template = """
 You are an expert in error correction and entity extraction, with expertise in multilingual processing (English, हिन्दी, मराठी).
 Analyze the given text and perform the following tasks:
 1. Named Entity Recognition: Identify key roles such as:
-   - PERSON: Names of individuals (eg. Mahesh, Suresh, etc)
+   - PERSON: Names of individuals (e.g., Mahesh, Suresh, etc.)
    - ORG: Organizations (Issuing Authority, Companies involved)
    - DATE: Important dates (Issue Date, Expiry Date, Agreement Date)
    - LOC: Locations mentioned in the document
@@ -37,14 +37,14 @@ Analyze the given text and perform the following tasks:
 
 Respond in this exact JSON format:
 {{
-   "entities Recognised": [
+    "entities Recognised": [
         {{
             "text": "extracted entity",
             "type": "entity type (PERSON, ORG, DATE, LOC, OTHER)"
         }}
+    ],
     "document_type": "Detected document type (in same script as input)",
-    "summary": "Brief summary of the document (in same script as input)",
-    ]
+    "summary": "Brief summary of the document (in same script as input)"
 }}
 """
 
@@ -59,31 +59,36 @@ class GroqLLM(LLM, BaseModel):
         return "groq"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-       headers = {
-        "Authorization": f"Bearer {self.api_key}",
-        "Content-Type": "application/json"
-       }
-    
-       payload = {
-        "model": self.model_name,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": self.temperature,
-        "max_tokens": self.max_tokens
-       }
-       response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        json=payload,
-        headers=headers
-       )
-       response_text = response.text
-       print("Raw API Response:", response_text)  # Debug output
-       
-       if response.status_code != 200:
-          return {"error": f"Groq API error: {response.status_code} - {response_text}"}
-          try:
-             return response.json()["choices"][0]["message"]["content"]
-          except json.JSONDecodeError:
-             return {"error": "Invalid JSON response from Groq API"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens
+        }
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            json=payload,
+            headers=headers
+        )
+
+        response_text = response.text
+        print("Raw API Response:", response_text)  # for Debugging
+
+        if response.status_code != 200:
+            return {"error": f"Groq API error: {response.status_code} - {response_text}"}
+
+        try:
+            response_json = response.json()
+            return response_json["choices"][0]["message"]["content"]
+        except json.JSONDecodeError:
+            return {"error": "Invalid JSON response from Groq API"}
+
     @property
     def _identifying_params(self) -> Dict[str, Any]:
         return {
@@ -91,11 +96,11 @@ class GroqLLM(LLM, BaseModel):
             "temperature": self.temperature,
             "max_tokens": self.max_tokens
         }
+
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def process_legal_text(text: str) -> Dict:
     try:
-        # Limit text length 
-        MAX_CHARS = 10000
+        MAX_CHARS = 10000 # max limit for text
         if len(text) > MAX_CHARS:
             text = text[:MAX_CHARS] + "..."
 
