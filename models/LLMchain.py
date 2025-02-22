@@ -59,29 +59,31 @@ class GroqLLM(LLM, BaseModel):
         return "groq"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens
-        }
-
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            json=payload,
-            headers=headers
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f"Groq API error: {response.status_code} - {response.text}")
-            
-        return response.json()["choices"][0]["message"]["content"]
-
+       headers = {
+        "Authorization": f"Bearer {self.api_key}",
+        "Content-Type": "application/json"
+       }
+    
+       payload = {
+        "model": self.model_name,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": self.temperature,
+        "max_tokens": self.max_tokens
+       }
+       response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        json=payload,
+        headers=headers
+       )
+       response_text = response.text
+       print("Raw API Response:", response_text)  # Debug output
+       
+       if response.status_code != 200:
+          return {"error": f"Groq API error: {response.status_code} - {response_text}"}
+          try:
+             return response.json()["choices"][0]["message"]["content"]
+          except json.JSONDecodeError:
+             return {"error": "Invalid JSON response from Groq API"}
     @property
     def _identifying_params(self) -> Dict[str, Any]:
         return {
