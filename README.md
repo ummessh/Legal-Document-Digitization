@@ -32,7 +32,16 @@ This system automates the digitization of legal documents through a sophisticate
   - Region-specific text extraction using YOLO detections.
   - Legal domain-specific error correction
 
----
+## 🧠 LLM Integration
+
+This system leverages the Mixtral-8x7b-32768 LLM for further analysis on the extracted text.
+The LLM processes OCR-extracted text via Groq cloud's API. The LLM is given a prompt template to follow, to give these:
+
+* **NER:** Extract and classify entities (person, organization, date, location)
+* **Summarization:** Generates concise document summary.
+* **Error Correction:** Analyze and correct rudimentary OCR errors using contextual understanding.
+* **Structured Output:** Provides output of the entities and the document summary in JSON format.
+
 
 ## 🚀 Getting Started
 
@@ -62,42 +71,32 @@ To run this project, you need the following dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-
-3. Download the pre-trained YOLOv8 model weights (if available) or train your own model using the provided dataset.
-
-4. Configure the OCR and database settings in the `config.yaml` file.
-
-5. Run the preprocessing and digitization pipeline:
-   ```bash
-   python main.py --input_path /path/to/documents
-   ```
-
 ---
+
+## 🛠️ Technical Architecture
 
 ## 🛠️ Technical Architecture
 
 The system follows a modular pipeline architecture:
 
-1. **Document Input**: Accepts scanned legal documents in various formats (PDF, JPG, JPEG, etc.).
-2. **Preprocessing Module**:
-   - Image enhancement
-   - Deskewing and rotation correction
-   - Binarization for improved OCR accuracy
-3. **Text Region Detection**:
-   - Custom YOLOv8 model trained on legal documents
-   - Region classification and localization (text, tables, stamps, signatures)
-4. **OCR Processing**:
-   - Region-wise text extraction using PyTesseract
-   - Legal domain-specific error correction
-5. **Data Structuring**:
-   - Named Entity Recognition (NER) for extracting key legal entities
-   - Database storage in SQLite
-   - Indexing for efficient search and retrieval
-6. **Query Interface**:
-   - Support for SQL queries
-   - Integration with RAG for advanced querying
-
----
+1.  **Document Input**: Accepts scanned legal documents in various formats (PDF, JPG, JPEG).
+2.  **Preprocessing Module**:
+    * Image enhancement
+    * Deskewing and rotation correction
+    * Binarization for improved Text visibility and accuracy on OCR.
+3.  **Text Region Detection**:
+    * Custom YOLOv8s model trained on legal documents
+    * Region classification and localization (text, tables, stamps, signatures)
+4.  **OCR Processing**:
+    * Region-wise text extraction on table and text region.
+    
+5.  **LLM Error correction:**
+    * Mixtral-8x7b-32768 LLM used for:
+        * Named Entity Recognition (NER)
+        * Document Summarization
+        * OCR Error Correction
+6. **Output:**
+    * Structured data output (JSON) containing extracted entities and summary.
 
 Here’s the updated performance metrics section with the new data you provided, formatted consistently with the README:
 
