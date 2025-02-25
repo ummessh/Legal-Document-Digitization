@@ -30,7 +30,7 @@ This system automates the digitization of legal documents through a sophisticate
 
 - **Advanced OCR Pipeline**
   - Region-specific text extraction using YOLO detections.
-  - Legal domain-specific error correction
+  - Error correction using Mixtral-7b.
 
 ## 🧠 LLM Integration
 
@@ -41,7 +41,6 @@ The LLM processes OCR-extracted text via Groq cloud's API. The LLM is given a pr
 * **Summarization:** Generates concise document summary.
 * **Error Correction:** Analyze and correct rudimentary OCR errors using contextual understanding.
 * **Structured Output:** Provides output of the entities and the document summary in JSON format.
-
 
 ## 🚀 Getting Started
 
@@ -126,19 +125,18 @@ Here’s the updated performance metrics section with the new data you provided,
   - Postprocess: 0.8ms per image
 
 ---
-## 🔄 Current Status
+## 🚀 Future Enhancements
 
-- **Completed**:
-  - Preprocessing pipeline implementation
-  - YOLOv8 model training
-  - OCR integration with PyTesseract
-  - Database schema design
-- **In Progress**:
-  - Error correction model
-  - NER implementation
-  - Web interface development using Django
-  - Integration with RAG for advanced querying
-  - Performance optimization for large-scale document processing
+* **Fine-tuning ByT5 for Enhanced Legal Text Processing:**
+    * We are planning to fine-tune a ByT5 (Byte-to-Byte Transformer) model on the IL-TUR multilingual legal annotated dataset.
+    * The IL-TUR dataset is a valuable resource specifically curated for Indian legal documents, providing a diverse collection of annotated legal texts across multiple indian languages.
+    * ByT5 is an ideal choice for this task due to its:
+        * **Byte-level processing:** This allows it to handle variations in spelling and complex legal terminology effectively, which is particularly crucial in multilingual legal documents.
+        * **Strong performance in sequence-to-sequence tasks:** ByT5 excels at tasks like error correction and NER, where it needs to understand the context of the input text and generate accurate output.
+    * Fine-tuning ByT5 on the IL-TUR dataset will enable:
+        * **Fine-grained error correction:** The model will learn the specific nuances of legal language and common OCR errors in the Indian legal context.
+        * **Improved contextual understanding:** ByT5 will gain a deeper understanding of the relationships between words and phrases in legal documents, leading to more accurate analysis.
+        * **More specific NER:** The model will learn to identify and classify legal entities with greater precision, leveraging the rich annotations in the IL-TUR dataset.
 
 ---
 
@@ -151,6 +149,6 @@ This project is licensed under the **Apache 2.0 License**. See the [LICENSE](htt
 ## 🙏 Acknowledgments
 
 - **Roboflow** for dataset annotation tools.
-- **IL-TUR Benchmark** for providing domain context for NER in Indian legal documents.
+- **Groq Cloud** for utilising Mixtral-8x7b-32768 via Groq API.
 - **YOLOv8** and **PyTesseract** communities for their excellent tools and documentation.
 
