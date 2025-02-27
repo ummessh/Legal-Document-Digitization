@@ -22,10 +22,6 @@ Here are some examples of the system's input and output:
   <tr>
     <th>Input</th>
     <th>Result</th>
-    <th>Input</th>
-    <th>Result</th>
-    <th>Input</th>
-    <th>Result</th>
   </tr>
   <tr>
     <td><img src="assets/President_Biden_restores_tradition_by_sending_congratulations_to_new_National_Press_Club_President.jpg" width="200"></td>
