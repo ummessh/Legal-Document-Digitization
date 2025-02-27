@@ -5,10 +5,10 @@
 </a>
 
 
- You can try it out [here.](https://legal-document-digitization.streamlit.app/#legal-document-digitizer)
- 
- A Document digitization system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision, Optical Character Recognition and error correction techniques.
+A Document digitization system designed specifically for the legal sector, capable of converting scanned legal documents into searchable, structured digital formats using computer vision, Optical Character Recognition and error correction techniques.
 
+
+You can try it out [here.](https://legal-document-digitization.streamlit.app/#legal-document-digitizer)
 ## 🎯 Project Overview
 
 This system automates the digitization of legal documents through a sophisticated pipeline that includes document preprocessing, text region detection, OCR, domain-specific error correction, and named entity recognition. The processed data is stored in a structured database, making it easily accessible and searchable.
