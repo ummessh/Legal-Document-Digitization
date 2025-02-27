@@ -30,10 +30,6 @@ Here are some examples of the system's input and output:
   <tr>
     <td><img src="assets/President_Biden_restores_tradition_by_sending_congratulations_to_new_National_Press_Club_President.jpg" width="200"></td>
     <td><img src="assets/text & signatures.jpg" width="200"></td>
-    <td><img src="assets/test.jpg" width="200"></td>
-    <td><img src="assets/result.jpg" width="200"></td>
-    <td><img src="assets/text-stamp test.jpg" width="200"></td>
-    <td><img src="assets/Stamp text result.jpg" width="200"></td>
   </tr>
 </table>
 
@@ -42,11 +38,11 @@ Here are some examples of the system's input and output:
 Here are some screenshots of the user interface:
 
 <p align="center">
-  <img src="assets/ui1.png" width="600">
+  <img src="assets/UI ss.PNG" width="600">
 </p>
 
 <p align="center">
-  <img src="assets/ui2.png" width="600">
+  <img src="assets/LLM analysis..PNG" width="600">
 </p>
 
 ### Key Features
