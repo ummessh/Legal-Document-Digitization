@@ -34,11 +34,11 @@ Here are some examples of the system's input and output:
 Here are some screenshots of the user interface:
 
 <p align="center">
-  <img src="assets/UI ss.PNG" width="600">
+  <img src="assets/UI ss.PNG">
 </p>
 
 <p align="center">
-  <img src="assets/LLM analysis..PNG" width="600">
+  <img src="assets/LLM analysis..PNG">
 </p>
 
 ### Key Features
@@ -99,9 +99,6 @@ To run this project, you need the following dependencies:
    pip install -r requirements.txt
    ```
 ---
-
-## 🛠️ Technical Architecture
-
 ## 🛠️ Technical Architecture
 
 The system follows a modular pipeline architecture:
@@ -178,5 +175,5 @@ This project is licensed under the **Apache 2.0 License**. See the [LICENSE](htt
 
 - **Roboflow** for dataset annotation tools.
 - **Groq Cloud** for utilising Mixtral-8x7b-32768 via Groq API.
-- **YOLOv8** and **PyTesseract** communities for their excellent tools and documentation.
+- **Ultralytics**,**PyTesseract** and **Streamlit Cloud** communities for their excellent tools and documentation.
 
