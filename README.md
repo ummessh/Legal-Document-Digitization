@@ -62,7 +62,7 @@ To run this project, you need the following dependencies:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/ummessh/Legal-Document-Digitization.git
+   git clone https://github.com/PhoenixAlpha23/Legal-Document-Digitization.git
    cd Legal-Document-Digitization
    ```
 
