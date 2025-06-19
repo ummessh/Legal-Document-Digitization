@@ -403,6 +403,14 @@ def main():
                                 with st.spinner("Analyzing text with LLM..."):
                                     llm_results = process_legal_text(combined_text)
                                     if "error" not in llm_results:
+    # ✅ Save to SQLite after LLM in PDF
+    filename = uploaded_file.name + f\"_page_{page_num+1}\"
+    timestamp = datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")
+    cursor.execute(\"INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)\",
+                   (filename, combined_text, timestamp))
+    conn.commit()
+    st.success(f\"✅ Page {page_num+1} saved to database.\")
+
                                         st.json(llm_results)
                                     else:
                                         st.error(llm_results["error"])
@@ -515,6 +523,14 @@ def main():
                         with st.spinner("Analyzing text with LLM..."):
                             llm_results = process_legal_text(combined_text)
                             if "error" not in llm_results:
+    # ✅ Save to SQLite after LLM in PDF
+    filename = uploaded_file.name + f\"_page_{page_num+1}\"
+    timestamp = datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")
+    cursor.execute(\"INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)\",
+                   (filename, combined_text, timestamp))
+    conn.commit()
+    st.success(f\"✅ Page {page_num+1} saved to database.\")
+
                                 st.json(llm_results)
                             else:
                                 st.error(llm_results["error"])
@@ -529,12 +545,7 @@ def main():
                             conn.commit()
                             st.success(f"✅ Page {page_num+1} saved to database.")
 
-                        # ✅ Save to SQLite here
-                        filename = uploaded_file.name
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",(filename, combined_text, timestamp))
-                        conn.commit()
-                        st.success("✅ Text saved to database.")        
+                                
                     else:
                         st.write("No Text Detected")
 #CHANGES end
