@@ -521,8 +521,7 @@ def main():
                            # ✅ Save to SQLite here
                            filename = uploaded_file.name
                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                           cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                                          (filename, combined_text, timestamp))
+                           cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",(filename, combined_text, timestamp))
                            conn.commit()
                            st.success("✅ Text saved to database.")        
                     else:
