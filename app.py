@@ -213,7 +213,10 @@ def main():
         st.dataframe(df)
 
         st.download_button("⬇ Download as CSV", df.to_csv(index=False), file_name="ocr_results.csv")
-        txt_data = "\n\n".join([f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" for _, row in df.iterrows()])
+        txt_data = "\n\n".join([
+            f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" 
+            for _, row in df.iterrows()
+        ])
         st.download_button("⬇ Download as TXT", txt_data, file_name="ocr_results.txt")
 
     # ✅ NEW: Let user download raw SQLite DB
