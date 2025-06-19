@@ -13,6 +13,8 @@ import io
 import cv2
 import pandas as pd
 import fitz
+import sqlite3
+from datetime import datetime
 
 from utils.config import Config 
 from utils.pdf_processing import process_pdf
@@ -177,6 +179,22 @@ def process_image(image, detections, ocr_processor, page_num=None, preprocessing
             else:
                 st.write(f"Category: {category} (Unknown)")
     return image_with_boxes, text_images, table_images, stamp_images, signature_images
+
+# Database Setup
+conn = sqlite3.connect("results.db", check_same_thread=False)
+cursor = conn.cursor()
+
+# Create table if not exists
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS extractions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    extracted_text TEXT,
+    timestamp TEXT
+)
+""")
+conn.commit()
+
     
 def main():
     detector = load_detector()
@@ -186,6 +204,17 @@ def main():
 
     # Sidebar for options
     st.sidebar.title("Document Processing Options")
+
+    # View DB Section
+    st.sidebar.subheader("📂 View Saved OCR Results")
+    if st.sidebar.button("📄 Show Entries"):
+        df = pd.read_sql_query("SELECT * FROM extractions ORDER BY timestamp DESC", conn)
+        st.write("### Saved OCR Results:")
+        st.dataframe(df)
+
+        st.download_button("⬇ Download as CSV", df.to_csv(index=False), file_name="ocr_results.csv")
+        txt_data = "\n\n".join([f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" for _, row in df.iterrows()])
+        st.download_button("⬇ Download as TXT", txt_data, file_name="ocr_results.txt")
 
     # Language Selection
     st.sidebar.subheader("Language Settings")
@@ -489,6 +518,13 @@ def main():
                                     st.json(llm_results)
                                 else:
                                     st.error(llm_results["error"])
+                           # ✅ Save to SQLite here
+                           filename = uploaded_file.name
+                           timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                           cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                          (filename, combined_text, timestamp))
+                           conn.commit()
+                           st.success("✅ Text saved to database.")        
                     else:
                         st.write("No Text Detected")
 #CHANGES end
