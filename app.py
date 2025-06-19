@@ -510,20 +510,31 @@ def main():
                                     st.write(f"Text: {result['text']}")
                                     combined_text += result['text'] + "\n"
                         
-                        if combined_text.strip():
-                            st.subheader("LLM Analysis")
-                            with st.spinner("Analyzing text with LLM..."):
-                                llm_results = process_legal_text(combined_text)
-                                if "error" not in llm_results:
-                                    st.json(llm_results)
-                                else:
-                                    st.error(llm_results["error"])
-                           # ✅ Save to SQLite here
-                           filename = uploaded_file.name
-                           timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                           cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",(filename, combined_text, timestamp))
-                           conn.commit()
-                           st.success("✅ Text saved to database.")        
+                    if combined_text.strip():
+                        st.subheader("LLM Analysis")
+                        with st.spinner("Analyzing text with LLM..."):
+                            llm_results = process_legal_text(combined_text)
+                            if "error" not in llm_results:
+                                st.json(llm_results)
+                            else:
+                                st.error(llm_results["error"])
+
+                            # After LLM processing
+                            filename = uploaded_file.name + f"_page_{page_num+1}"
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cursor.execute(
+                                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                (filename, combined_text, timestamp)
+                            )
+                            conn.commit()
+                            st.success(f"✅ Page {page_num+1} saved to database.")
+
+                        # ✅ Save to SQLite here
+                        filename = uploaded_file.name
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        cursor.execute("INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",(filename, combined_text, timestamp))
+                        conn.commit()
+                        st.success("✅ Text saved to database.")        
                     else:
                         st.write("No Text Detected")
 #CHANGES end
