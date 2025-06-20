@@ -9,10 +9,12 @@ torch==2.2.1
 torchvision==0.17.1
 ultralytics==8.0.196
 transformers==4.36.0
-langchain==0.1.17
-langchain-community==0.0.25
-langchain-core==0.1.38
 huggingface-hub==0.20.3
+
+langchain==0.1.17
+langchain-community==0.0.36
+langchain-core==0.1.38
+
 pandas==2.2.1
 scikit-image==0.22.0
 tqdm==4.66.2
