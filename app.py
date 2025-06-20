@@ -205,16 +205,22 @@ def main():
     # Sidebar for options
     st.sidebar.title("Document Processing Options")
 
-    # View DB Section
-    st.sidebar.subheader("📂 View Saved OCR Results")
-    if st.sidebar.button("📄 Show Entries"):
+    # View DB Section (Always Visible Downloads)
+    st.sidebar.subheader("📂 Saved OCR Results")
+    try:
         df = pd.read_sql_query("SELECT * FROM extractions ORDER BY timestamp DESC", conn)
-        st.write("### Saved OCR Results:")
-        st.dataframe(df)
+        if not df.empty:
+            st.sidebar.dataframe(df)
 
-        st.download_button("⬇ Download as CSV", df.to_csv(index=False), file_name="ocr_results.csv")
-        txt_data = "\n\n".join([f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" for _, row in df.iterrows()])
-        st.download_button("⬇ Download as TXT", txt_data, file_name="ocr_results.txt")
+            st.sidebar.download_button("⬇ Download as CSV", df.to_csv(index=False), file_name="ocr_results.csv")
+
+            txt_data = "\n\n".join([f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" for _, row in df.iterrows()])
+            st.sidebar.download_button("⬇ Download as TXT", txt_data, file_name="ocr_results.txt")
+        else:
+            st.sidebar.info("No saved OCR results found.")
+    except Exception as e:
+        st.sidebar.error("Error reading from database.")
+        logger.exception(e)
 
     # ✅ NEW: Let user download raw SQLite DB
     if os.path.exists("results.db"):
