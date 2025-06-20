@@ -401,31 +401,31 @@ def main():
                             st.write(f"{entity_counter}) Signatures: Not Detected")
                             entity_counter += 1
 
-if combined_text.strip():
-    st.subheader("LLM Analysis")
-    try:
-        with st.spinner("Analyzing text with LLM..."):
-            llm_results = process_legal_text(combined_text)
+                        try:
+                            if combined_text.strip():
+                                st.subheader("LLM Analysis")
+                                with st.spinner("Analyzing text with LLM..."):
+                                    llm_results = process_legal_text(combined_text)
 
-            # ✅ Save to DB regardless of LLM result
-            filename = uploaded_file.name + f"_page_{page_num+1}"
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute(
-                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                (filename, combined_text, timestamp)
-            )
-            conn.commit()
-            st.success(f"✅ Page {page_num+1} saved to database.")
+                                    # ✅ Save to DB regardless of LLM result
+                                    filename = uploaded_file.name + f"_page_{page_num+1}"
+                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    cursor.execute(
+                                        "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                        (filename, combined_text, timestamp)
+                                    )
+                                    conn.commit()
+                                    st.success(f"✅ Page {page_num+1} saved to database.")
 
-            if llm_results and "error" not in llm_results:
-                st.json(llm_results)
-            else:
-                st.warning("LLM couldn't process this page correctly.")
-    except Exception as e:
-        st.warning("LLM failed, but data is still saved.")
-        st.error(str(e))
-else:
-    st.write("No Text Detected")
+                                    if llm_results and "error" not in llm_results:
+                                        st.json(llm_results)
+                                    else:
+                                        st.warning("LLM couldn't process this page correctly.")
+                            else:
+                                st.write("No Text Detected")
+                        except Exception as e:
+                            st.warning("LLM failed, but data is still saved.")
+                            st.error(str(e))
 
                         # Clear lists for the next page
                         text_images = []
@@ -517,31 +517,31 @@ else:
                     entity_counter += 1
 
                 try:
-if combined_text.strip():
-    st.subheader("LLM Analysis")
-    try:
-        with st.spinner("Analyzing text with LLM..."):
-            llm_results = process_legal_text(combined_text)
+                        try:
+                            if combined_text.strip():
+                                st.subheader("LLM Analysis")
+                                with st.spinner("Analyzing text with LLM..."):
+                                    llm_results = process_legal_text(combined_text)
 
-            # ✅ Save to DB regardless of LLM result
-            filename = uploaded_file.name + f"_page_{page_num+1}"
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute(
-                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                (filename, combined_text, timestamp)
-            )
-            conn.commit()
-            st.success(f"✅ Page {page_num+1} saved to database.")
+                                    # ✅ Save to DB regardless of LLM result
+                                    filename = uploaded_file.name + f"_page_{page_num+1}"
+                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    cursor.execute(
+                                        "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                        (filename, combined_text, timestamp)
+                                    )
+                                    conn.commit()
+                                    st.success(f"✅ Page {page_num+1} saved to database.")
 
-            if llm_results and "error" not in llm_results:
-                st.json(llm_results)
-            else:
-                st.warning("LLM couldn't process this page correctly.")
-    except Exception as e:
-        st.warning("LLM failed, but data is still saved.")
-        st.error(str(e))
-else:
-    st.write("No Text Detected")
+                                    if llm_results and "error" not in llm_results:
+                                        st.json(llm_results)
+                                    else:
+                                        st.warning("LLM couldn't process this page correctly.")
+                            else:
+                                st.write("No Text Detected")
+                        except Exception as e:
+                            st.warning("LLM failed, but data is still saved.")
+                            st.error(str(e))
 
                 except Exception as e:
                     st.error(f"An error occurred during image text extraction: {e}")
