@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 
+# It's good practice to get API keys securely from environment variables
+# Ensure GROQ_API_KEY is set in your deployment environment
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 prompt_template = """
@@ -49,7 +51,8 @@ Respond in this exact JSON format:
 """
 
 class GroqLLM(LLM, BaseModel):
-    api_key: str = GROQ_API_KEY
+    # Ensure a default value or handle the case where GROQ_API_KEY might be None
+    api_key: str = GROQ_API_KEY if GROQ_API_KEY else "" 
     model_name: str = "mixtral-8x7b-32768"
     temperature: float = 0.0
     max_tokens: int = 1024
@@ -59,6 +62,9 @@ class GroqLLM(LLM, BaseModel):
         return "groq"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+        if not self.api_key:
+            return json.dumps({"error": "GROQ_API_KEY is not set."})
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -78,16 +84,18 @@ class GroqLLM(LLM, BaseModel):
         )
 
         response_text = response.text
-        print("Raw API Response:", response_text)  # for Debugging
+        # print("Raw API Response:", response_text)  # Keep for debugging if needed
 
         if response.status_code != 200:
-            return {"error": f"Groq API error: {response.status_code} - {response_text}"}
+            # Return a JSON string for consistency, which can be loaded by the caller
+            return json.dumps({"error": f"Groq API error: {response.status_code} - {response_text}"})
 
         try:
             response_json = response.json()
+            # Ensure 'content' exists before returning
             return response_json["choices"][0]["message"]["content"]
-        except json.JSONDecodeError:
-            return {"error": "Invalid JSON response from Groq API"}
+        except (json.JSONDecodeError, KeyError) as e:
+            return json.dumps({"error": f"Invalid JSON response or missing key from Groq API: {e}. Raw response: {response_text}"})
 
     @property
     def _identifying_params(self) -> Dict[str, Any]:
@@ -105,14 +113,33 @@ def process_legal_text(text: str) -> Dict:
             text = text[:MAX_CHARS] + "..."
 
         if not GROQ_API_KEY:
-            raise ValueError("API key not found in environment variables")
+            # Raise an error here, which will be caught by the outer try-except
+            raise ValueError("GROQ_API_KEY is not found in environment variables. Please set it.")
 
-        llm = GroqLLM()
+        llm = GroqLLM(api_key=GROQ_API_KEY) # Pass the API key explicitly
         prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-        chain = prompt | llm | RunnablePassthrough()
-        response = chain.invoke({"text": text})
+        
+        # Using LCEL for chaining
+        # The output of llm._call is a string, which should be the JSON string
+        # If llm._call returns a dict (in case of error), it won't be directly consumable
+        # by json.loads, so we need to ensure it's always a string.
+        # The change in _call to return json.dumps will handle this.
+        chain = prompt | llm 
+        
+        response_str = chain.invoke({"text": text})
 
-        return json.loads(response)
+        # Attempt to parse the response string as JSON
+        response_dict = json.loads(response_str)
 
+        # Check if the response dictionary itself contains an "error" key from GroqLLM._call
+        if "error" in response_dict:
+            # If there's an error from the LLM, raise it as an exception
+            raise RuntimeError(response_dict["error"])
+
+        return response_dict
+
+    except json.JSONDecodeError as e:
+        return {"error": f"Failed to parse LLM response as JSON. Error: {str(e)}. Raw response: {response_str}"}
     except Exception as e:
+        # Catch any other general exceptions during processing
         return {"error": f"Processing failed: {str(e)}"}
