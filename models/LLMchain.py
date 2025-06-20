@@ -5,12 +5,10 @@ from langchain.llms.base import LLM
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.schema.runnable import RunnablePassthrough
-from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 
-# It's good practice to get API keys securely from environment variables
-# Ensure GROQ_API_KEY is set in your deployment environment
+# Securely get API key from environment variables
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 prompt_template = """
@@ -50,8 +48,7 @@ Respond in this exact JSON format:
 }}
 """
 
-class GroqLLM(LLM, BaseModel):
-    # Ensure a default value or handle the case where GROQ_API_KEY might be None
+class GroqLLM(LLM):
     api_key: str = GROQ_API_KEY if GROQ_API_KEY else "" 
     model_name: str = "mixtral-8x7b-32768"
     temperature: float = 0.0
@@ -84,15 +81,12 @@ class GroqLLM(LLM, BaseModel):
         )
 
         response_text = response.text
-        # print("Raw API Response:", response_text)  # Keep for debugging if needed
 
         if response.status_code != 200:
-            # Return a JSON string for consistency, which can be loaded by the caller
             return json.dumps({"error": f"Groq API error: {response.status_code} - {response_text}"})
 
         try:
             response_json = response.json()
-            # Ensure 'content' exists before returning
             return response_json["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError) as e:
             return json.dumps({"error": f"Invalid JSON response or missing key from Groq API: {e}. Raw response: {response_text}"})
@@ -108,32 +102,21 @@ class GroqLLM(LLM, BaseModel):
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def process_legal_text(text: str) -> Dict:
     try:
-        MAX_CHARS = 10000 # max limit for text
+        MAX_CHARS = 10000
         if len(text) > MAX_CHARS:
             text = text[:MAX_CHARS] + "..."
 
         if not GROQ_API_KEY:
-            # Raise an error here, which will be caught by the outer try-except
             raise ValueError("GROQ_API_KEY is not found in environment variables. Please set it.")
 
-        llm = GroqLLM(api_key=GROQ_API_KEY) # Pass the API key explicitly
+        llm = GroqLLM(api_key=GROQ_API_KEY)
         prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-        
-        # Using LCEL for chaining
-        # The output of llm._call is a string, which should be the JSON string
-        # If llm._call returns a dict (in case of error), it won't be directly consumable
-        # by json.loads, so we need to ensure it's always a string.
-        # The change in _call to return json.dumps will handle this.
         chain = prompt | llm 
-        
-        response_str = chain.invoke({"text": text})
 
-        # Attempt to parse the response string as JSON
+        response_str = chain.invoke({"text": text})
         response_dict = json.loads(response_str)
 
-        # Check if the response dictionary itself contains an "error" key from GroqLLM._call
         if "error" in response_dict:
-            # If there's an error from the LLM, raise it as an exception
             raise RuntimeError(response_dict["error"])
 
         return response_dict
@@ -141,5 +124,5 @@ def process_legal_text(text: str) -> Dict:
     except json.JSONDecodeError as e:
         return {"error": f"Failed to parse LLM response as JSON. Error: {str(e)}. Raw response: {response_str}"}
     except Exception as e:
-        # Catch any other general exceptions during processing
         return {"error": f"Processing failed: {str(e)}"}
+
