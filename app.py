@@ -400,36 +400,29 @@ def main():
                         else:
                             st.write(f"{entity_counter}) Signatures: Not Detected")
                             entity_counter += 1
-#CHANGES Start
-                        st.write("## Extracted Text:")
-                        if text_images:
-                            combined_text = ""
-                            for detection in detections:
-                                if "class" in detection and detection["class"] == "text":
-                                    ocr_results = ocr_processor.process_detections(image_np, [detection], preprocessing_options)
-                                    for result in ocr_results:
-                                        st.write(f"Text: {result['text']}")
-                                        combined_text += result['text'] + "\n"
-                            
-                            if combined_text.strip():
-                                st.subheader("LLM Analysis")
-                                with st.spinner("Analyzing text with LLM..."):
-                                    llm_results = process_legal_text(combined_text)
-                                    if "error" not in llm_results:
-    # ✅ Save to SQLite after LLM in PDF
-    filename = uploaded_file.name + f\"_page_{page_num+1}\"
-    timestamp = datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")
-    cursor.execute(\"INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)\",
-                   (filename, combined_text, timestamp))
-    conn.commit()
-    st.success(f\"✅ Page {page_num+1} saved to database.\")
 
-                                        st.json(llm_results)
-                                    else:
-                                        st.error(llm_results["error"])
-                        else:
-                            st.write("No Text Detected")
-#CHANGES End
+if combined_text.strip():
+    st.subheader("LLM Analysis")
+    with st.spinner("Analyzing text with LLM..."):
+        llm_results = process_legal_text(combined_text)
+
+        # ✅ Save to DB regardless of LLM result
+        filename = uploaded_file.name + f"_page_{page_num+1}"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+            (filename, combined_text, timestamp)
+        )
+        conn.commit()
+        st.success(f"✅ Page {page_num+1} saved to database.")
+
+        if llm_results and "error" not in llm_results:
+            st.json(llm_results)
+        else:
+            st.warning("LLM couldn't process this page correctly.")
+else:
+    st.write("No Text Detected")
+
                         # Clear lists for the next page
                         text_images = []
                         table_images = []
@@ -519,49 +512,29 @@ def main():
                     st.write(f"{entity_counter}) Signatures: Not Detected")
                     entity_counter += 1
 
-                try:#CHANGES start
-                    st.write("## Extracted Text:")
-                    combined_text = ""
-                    if text_images:
-                       
-                        for detection in detections:
-                            if "class" in detection and detection["class"] == "text":
-                                ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
-                                for result in ocr_results:
-                                    st.write(f"Text: {result['text']}")
-                                    combined_text += result['text'] + "\n"
-                        
-                    if combined_text.strip():
-                        st.subheader("LLM Analysis")
-                        with st.spinner("Analyzing text with LLM..."):
-                            llm_results = process_legal_text(combined_text)
-                            if "error" not in llm_results:
-    # ✅ Save to SQLite after LLM in PDF
-    filename = uploaded_file.name + f\"_page_{page_num+1}\"
-    timestamp = datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")
-    cursor.execute(\"INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)\",
-                   (filename, combined_text, timestamp))
-    conn.commit()
-    st.success(f\"✅ Page {page_num+1} saved to database.\")
+                try:
+if combined_text.strip():
+    st.subheader("LLM Analysis")
+    with st.spinner("Analyzing text with LLM..."):
+        llm_results = process_legal_text(combined_text)
 
-                                st.json(llm_results)
-                            else:
-                                st.error(llm_results["error"])
+        # ✅ Save to DB regardless of LLM result
+        filename = uploaded_file.name + f"_page_{page_num+1}"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+            (filename, combined_text, timestamp)
+        )
+        conn.commit()
+        st.success(f"✅ Page {page_num+1} saved to database.")
 
-                            # After LLM processing
-                            filename = uploaded_file.name + f"_page_{page_num+1}"
-                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            cursor.execute(
-                                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                                (filename, combined_text, timestamp)
-                            )
-                            conn.commit()
-                            st.success(f"✅ Page {page_num+1} saved to database.")
+        if llm_results and "error" not in llm_results:
+            st.json(llm_results)
+        else:
+            st.warning("LLM couldn't process this page correctly.")
+else:
+    st.write("No Text Detected")
 
-                                
-                    else:
-                        st.write("No Text Detected")
-#CHANGES end
                 except Exception as e:
                     st.error(f"An error occurred during image text extraction: {e}")
                     logger.exception(f"An error occurred during image text extraction: {e}")
