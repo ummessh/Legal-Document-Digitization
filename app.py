@@ -2,501 +2,554 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-import os
 import streamlit as st
-import sqlite3
-import pandas as pd
-from datetime import datetime
+import torch
+import numpy as np
+from PIL import Image
+import os
 import logging
 import sys
 import io
-import numpy as np
-from PIL import Image
-import fitz # PyMuPDF for PDF processing
-import cv2 # OpenCV for image processing (used in mock preprocess_image and yolo_detector)
-import pytesseract # For OCR (used in mock preprocess_image)
-import requests # For Groq API calls (used in LLMchain)
-import json # For JSON handling (used in LLMchain)
+import cv2
+import pandas as pd
+import fitz
+import sqlite3
+from datetime import datetime
 
-# LangChain imports (for LLMchain)
-from langchain.llms.base import LLM
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain.schema.runnable import RunnablePassthrough
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from utils.config import Config 
+from utils.pdf_processing import process_pdf
+from utils.image_processing import preprocess_image
+from models.yolo_detector import YOLODetector
+from models.LLMchain import process_legal_text
 
-# Configure logging
+st.set_page_config(
+    page_title="Legal Document Digitization with YOLO OCR",
+    page_icon=":page_facing_up:",
+    layout="wide"
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-# --- Start of utils/config.py content ---
-class Config:
+def process_pdf_page(page, dpi=300):
     """
-    Configuration settings for the Legal Document Digitization application.
+    Process a single PDF page and convert it to a numpy array.
+    
+    Args:
+        page: fitz.Page object
+        dpi: int, resolution for rendering (default: 300)
+    
+    Returns:
+        tuple: (numpy array of the image, error message if any)
     """
-    # Placeholder for a YOLO model path.
-    # In a real application, replace None with the actual path to your YOLOv8 model file.
-    # Example: model_path = "models/yolov8n.pt"
-    model_path = None # Set to None for the mock. For real usage, provide a valid path.
-# --- End of utils/config.py content ---
-
-
-# --- Start of models/yolo_detector.py content ---
-class YOLODetector:
-    def __init__(self, model_path=None):
-        """
-        Initializes the YOLO Detector.
-        In a real application, this would load your YOLO model.
-        :param model_path: Path to the YOLO model file (e.g., 'yolov8n.pt').
-        """
-        self.model_path = model_path if model_path is not None else Config.model_path
-        if self.model_path:
-            logger.info(f"YOLODetector initialized. Attempting to load model from: {self.model_path}")
-            # Here you would load your actual YOLO model, e.g.:
-            # from ultralytics import YOLO
-            # self.model = YOLO(self.model_path)
-            # For this mock, we don't load a real model.
-        else:
-            logger.warning("YOLODetector initialized without a specific model path. Using mock detections.")
-        
-    def detect(self, image_np: np.ndarray):
-        """
-        Performs object detection on a given image.
-        This is a mock implementation that returns dummy detections.
-        In a real application, this would run your YOLO model.
-
-        :param image_np: The input image as a NumPy array (H, W, C).
-        :return: A tuple (list of detection dictionaries, original image as NumPy array).
-                 Each detection dictionary has 'bbox' (x, y, w, h) and 'class'.
-        """
-        if image_np is None:
-            logger.error("YOLODetector received None for image_np. Cannot perform detection.")
-            return [], None # Return empty detections if no image
-
-        logger.info("Performing mock YOLO detection.")
-        
-        # For demonstration, create some dummy 'text' detections based on image dimensions
-        h, w, _ = image_np.shape
-        
-        detections = []
-        
-        # Add a dummy text detection covering a significant part of the image
-        text_bbox1 = [int(w * 0.1), int(h * 0.1), int(w * 0.8), int(h * 0.3)] # x, y, width, height
-        detections.append({
-            'bbox': text_bbox1,
-            'class': 'text',
-            'confidence': 0.95
-        })
-
-        # Add another smaller dummy text detection
-        text_bbox2 = [int(w * 0.2), int(h * 0.5), int(w * 0.6), int(h * 0.2)]
-        detections.append({
-            'bbox': text_bbox2,
-            'class': 'text',
-            'confidence': 0.90
-        })
-
-        # Example of other detection types (not processed by OCR here, but good for structure)
-        table_bbox = [int(w * 0.15), int(h * 0.75), int(w * 0.5), int(h * 0.2)]
-        detections.append({
-            'bbox': table_bbox,
-            'class': 'table',
-            'confidence': 0.85
-        })
-
-        signature_bbox = [int(w * 0.7), int(h * 0.8), int(w * 0.2), int(h * 0.1)]
-        detections.append({
-            'bbox': signature_bbox,
-            'class': 'signature',
-            'confidence': 0.78
-        })
-
-        return detections, image_np # Return detections and the original image NumPy array
-# --- End of models/yolo_detector.py content ---
-
-
-# --- Start of utils/pdf_processing.py content (simplified as it's less used in the new flow) ---
-# NOTE: The main app.py directly handles basic PDF page loading using fitz now.
-# This function is kept for completeness but might not be explicitly called by the main logic.
-def process_pdf(pdf_file, dpi=300):
-    """
-    Processes a PDF file and yields images for each page.
-    This is a conceptual function as app.py now loads a single page directly.
-    """
-    logger.info("process_pdf function called (conceptual).")
-    doc = fitz.open(stream=pdf_file, filetype="pdf")
-    for page_num in range(doc.page_count):
-        page = doc.load_page(page_num)
+    try:
+        # Get the page's pixel matrix
         pix = page.get_pixmap(matrix=fitz.Matrix(dpi/72, dpi/72))
-        image_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-        if pix.n == 4: # CMYK to RGB conversion
+        
+        # Convert to numpy array
+        image_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+            pix.height, pix.width, pix.n
+        )
+        
+        # If the image is CMYK (4 channels), convert to RGB (3 channels)
+        if pix.n == 4:
+            # Create RGB image
             image_rgb = np.zeros((pix.height, pix.width, 3), dtype=np.uint8)
+            # Simple CMYK to RGB conversion
             image_rgb[:, :, 0] = image_np[:, :, 0] * (1 - image_np[:, :, 3] / 255.0)
             image_rgb[:, :, 1] = image_np[:, :, 1] * (1 - image_np[:, :, 3] / 255.0)
             image_rgb[:, :, 2] = image_np[:, :, 2] * (1 - image_np[:, :, 3] / 255.0)
             image_np = image_rgb
-        yield image_np, page_num
-    doc.close()
-# --- End of utils/pdf_processing.py content ---
 
+        return image_np, None
+        
+    except Exception as e:
+        return None, str(e)
 
-# --- Start of utils/image_processing.py content ---
-def get_supported_languages_for_ocr():
-    """Returns a dictionary of supported languages and their codes for Tesseract."""
-    return {
-        'English': 'eng',
-        'Hindi': 'hin',
-        'Marathi': 'mar'
-    }
+def get_supported_languages():
+    """Returns a dictionary of supported languages and their codes."""
+    return {'English': 'eng',
+            'Hindi': 'hin',
+            'Marathi':'mar'
+           }
 
-def preprocess_image(image_np: np.ndarray, detection: dict):
-    """
-    Extracts Region of Interest (ROI) from an image based on detection,
-    applies basic preprocessing, and performs OCR using Tesseract.
-    
-    :param image_np: The full input image as a NumPy array (H, W, C).
-    :param detection: A dictionary representing a single detection, expected to have a 'bbox' key.
-                      Example: {'bbox': [x, y, w, h], 'class': 'text', ...}
-    :return: A list of dictionaries, each with 'text' key for OCR results.
-             Returns an empty list if no text can be extracted or bbox is invalid.
-    """
-    results = []
-    
-    if not isinstance(detection, dict) or 'bbox' not in detection:
-        logger.error("Invalid detection object passed to preprocess_image. Missing 'bbox'.")
+class OCRProcessor:
+    def __init__(self, language='eng', psm=3):
+        self.tesseract_config = f'-l {language} --psm {psm}'
+        import pytesseract
+        self.pytesseract = pytesseract
+        
+    def update_config(self, language, psm):
+        """Update Tesseract configuration with new language and PSM."""
+        self.tesseract_config = f'-l {language} --psm {psm}'
+
+    def process_detections(self, image, detections, preprocessing_options=None):
+        results = []
+        for detection in detections:
+            bbox = detection['bbox']
+            roi = self.extract_roi(image, bbox)
+
+            # Preprocess the ROI
+            preprocessed_roi = preprocess_image(roi, preprocessing_options)
+
+            try:
+                text = self.pytesseract.image_to_string(preprocessed_roi, config=self.tesseract_config)
+            except Exception as e:
+                logger.error(f"Tesseract processing error: {e}")
+                text = ''
+
+            results.append({
+                'bbox': bbox,
+                'text': text,
+                'corrected_text': text
+            })
         return results
 
-    bbox = detection['bbox']
-    try:
-        x, y, w, h = map(int, bbox)
-        # Ensure bounding box coordinates are within image dimensions
-        x = max(0, x)
-        y = max(0, y)
-        w = min(w, image_np.shape[1] - x)
-        h = min(h, image_np.shape[0] - y)
-
-        if w <= 0 or h <= 0:
-            logger.warning(f"Invalid ROI dimensions for bbox {bbox}. Skipping OCR.")
-            return results
-
-        roi = image_np[y:y+h, x:x+w]
-
-        # Convert ROI to PIL Image for Tesseract
-        roi_pil = Image.fromarray(roi)
-
-        # --- Tesseract OCR Configuration ---
-        # For this combined file, using default English and PSM 3.
-        # In a full app, you would take these from Streamlit sidebar options.
-        lang_code = 'eng' # Default language
-        psm = 3           # Default Page Segmentation Mode: Automatic page segmentation
-
-        tesseract_config = f'-l {lang_code} --psm {psm}'
+    @staticmethod
+    def extract_roi(image, bbox):
+        x, y, w, h = bbox
+        return image[int(y):int(y + h), int(x):int(x + w)]
         
-        text = ""
+@st.cache_resource(max_entries=1)
+def load_detector():
+    with st.spinner("Loading YOLO model..."):
+        logger.info("Initializing YOLO model...")
         try:
-            text = pytesseract.image_to_string(roi_pil, config=tesseract_config)
-            logger.info(f"OCR extracted text from ROI (bbox: {bbox}): '{text.strip()[:50]}...'")
-        except pytesseract.TesseractNotFoundError:
-            logger.error("Tesseract is not installed or not in your PATH. Please install it.")
-            text = "[Tesseract Not Found Error]"
+            detector = YOLODetector(Config.model_path)
+            logger.info("YOLO model initialized successfully.")
+            return detector
         except Exception as e:
-            logger.error(f"Error during Tesseract OCR on bbox {bbox}: {e}")
-            text = f"[OCR Error: {e}]"
+            logger.error(f"Error initializing YOLO model: {e}")
+            st.error(f"Error loading YOLO model: {e}")
+            raise
 
-        results.append({
-            'bbox': bbox,
-            'text': text
-        })
+@st.cache_resource(max_entries=1)
+def load_ocr_processor():
+    with st.spinner("Loading Tesseract OCR engine..."):
+        logger.info("Initializing Tesseract OCR processor")
+        return OCRProcessor()
 
-    except Exception as e:
-        logger.error(f"Error processing detection bbox {bbox}: {e}")
-        
-    return results
-# --- End of utils/image_processing.py content ---
+def process_image(image, detections, ocr_processor, page_num=None, preprocessing_options=None):
+    image_with_boxes = image.copy()
+    text_images = []
+    table_images = []
+    stamp_images = []
+    signature_images = []
 
+    if detections:
+        for detection in detections:
+            bbox = detection['bbox']
+            x, y, w, h = map(int, bbox)
+            cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-# --- Start of models/LLMchain.py content ---
-# It's good practice to get API keys securely from environment variables
-# Ensure GROQ_API_KEY is set in your deployment environment
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+            if 'class' in detection:
+                category = detection['class']
+            elif 'confidence' in detection:
+                confidence = detection['confidence']
+                if confidence > 0.8:
+                    category = "text"
+                else:
+                    category = "unknown"
+            else:
+                category = "unknown"
 
-prompt_template = """
-You are an expert in error correction and entity extraction, with expertise in multilingual processing (English, हिन्दी, मराठी).
-Analyze the given text and perform the following tasks:
-1. Named Entity Recognition: Identify key roles such as:
-   - PERSON: Names of individuals (e.g., Mahesh, Suresh, etc.)
-   - ORG: Organizations (Issuing Authority, Companies involved)
-   - DATE: Important dates (Issue Date, Expiry Date, Agreement Date)
-   - LOC: Locations mentioned in the document
-   - OTHER: Any other relevant entities (e.g., Contract Number, Registration ID)
-2. Summarization: Provide a brief summary of the document covering:
-   - Document Type (Certificate, Agreement, Contract, etc.)
-   - Purpose of the document
-   - Key points (Validity, Terms, Clauses)
+            cv2.putText(image_with_boxes, str(category), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-**Text:**
-{text}
+            roi = image[y:y+h, x:x+w]
 
-**IMPORTANT RULES**
-1. The targeted domain of the text is legal documentation
-2. CRITICAL: ALL output fields (document_type, summary, etc.) MUST be in the SAME LANGUAGE AND SCRIPT as the input text
-3. If input is in Hindi script (देवनागरी), respond entirely in Hindi script
-4. If input is in Marathi, respond entirely in Marathi
-5. If input is in English, respond in English
+            if category == "text":
+                ocr_results = ocr_processor.process_detections(image, [detection], preprocessing_options)
+                for result in ocr_results:
+                    st.write(f"Category: {category}, Text: {result['text']}")
+                text_images.append(roi)
+            elif category == "table":
+                try:
+                    df = pd.DataFrame()  # Placeholder - Replace with actual conversion
+                    st.dataframe(df)
+                    table_images.append(roi)
+                except Exception as e:
+                    st.error(f"Error processing table: {e}")
+                    logger.exception(f"Error processing table: {e}")
+            elif category == "stamp":
+                st.write("Stamp detected!")
+                stamp_images.append(roi)
+            elif category == "signature":
+                st.write("Signature detected!")
+                signature_images.append(roi)
+            else:
+                st.write(f"Category: {category} (Unknown)")
+    return image_with_boxes, text_images, table_images, stamp_images, signature_images
 
-Respond in this exact JSON format:
-{{
-    "entities Recognised": [
-        {{
-            "text": "extracted entity",
-            "type": "entity type (PERSON, ORG, DATE, LOC, OTHER)"
-        }}
-    ],
-    "document_type": "Detected document type (in same script as input)",
-    "summary": "Brief summary of the document (in same script as input)"
-}}
-"""
-
-class GroqLLM(LLM, BaseModel):
-    # Ensure a default value or handle the case where GROQ_API_KEY might be None
-    api_key: str = GROQ_API_KEY if GROQ_API_KEY else "" 
-    model_name: str = "mixtral-8x7b-32768"
-    temperature: float = 0.0
-    max_tokens: int = 1024
-
-    @property
-    def _llm_type(self) -> str:
-        return "groq"
-
-    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        if not self.api_key:
-            return json.dumps({"error": "GROQ_API_KEY is not set. Please provide it as an environment variable."})
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens
-        }
-
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            json=payload,
-            headers=headers
-        )
-
-        response_text = response.text
-        # print("Raw API Response:", response_text)  # Keep for debugging if needed
-
-        if response.status_code != 200:
-            # Return a JSON string for consistency, which can be loaded by the caller
-            return json.dumps({"error": f"Groq API error: {response.status_code} - {response_text}"})
-
-        try:
-            response_json = response.json()
-            # Ensure 'content' exists before returning
-            return response_json["choices"][0]["message"]["content"]
-        except (json.JSONDecodeError, KeyError) as e:
-            return json.dumps({"error": f"Invalid JSON response or missing key from Groq API: {e}. Raw response: {response_text}"})
-
-    @property
-    def _identifying_params(self) -> Dict[str, Any]:
-        return {
-            "model_name": self.model_name,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens
-        }
-
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def process_legal_text(text: str) -> Dict:
-    try:
-        MAX_CHARS = 10000 # max limit for text
-        if len(text) > MAX_CHARS:
-            text = text[:MAX_CHARS] + "..."
-
-        if not GROQ_API_KEY:
-            # Raise an error here, which will be caught by the outer try-except
-            raise ValueError("GROQ_API_KEY is not found in environment variables. Please set it.")
-
-        llm = GroqLLM(api_key=GROQ_API_KEY) # Pass the API key explicitly
-        prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-        
-        # Using LCEL for chaining
-        chain = prompt | llm 
-        
-        response_str = chain.invoke({"text": text})
-
-        # Attempt to parse the response string as JSON
-        response_dict = json.loads(response_str)
-
-        # Check if the response dictionary itself contains an "error" key from GroqLLM._call
-        if "error" in response_dict:
-            # If there's an error from the LLM, raise it as an exception
-            raise RuntimeError(response_dict["error"])
-
-        return response_dict
-
-    except json.JSONDecodeError as e:
-        return {"error": f"Failed to parse LLM response as JSON. Error: {str(e)}. Raw response: {response_str}"}
-    except Exception as e:
-        # Catch any other general exceptions during processing
-        return {"error": f"Processing failed: {str(e)}"}
-# --- End of models/LLMchain.py content ---
-
-
-# --- Main Application Logic ---
-# --- Database Setup ---
-# Connect to SQLite database. check_same_thread=False is needed for Streamlit.
+# Database Setup
 conn = sqlite3.connect("results.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# Create table if it doesn't exist to store extraction results
+# Create table if not exists
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS extractions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        filename TEXT,
-        extracted_text TEXT,
-        timestamp TEXT
-    )
+CREATE TABLE IF NOT EXISTS extractions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    extracted_text TEXT,
+    timestamp TEXT
+)
 """)
-conn.commit() # Commit changes to the database
+conn.commit()
 
-# --- Streamlit App Start ---
-st.set_page_config(page_title="Legal Document Digitization", layout="wide")
-st.title("🚀 Legal Doc Digitizer + LLM Analysis")
-
-uploaded_file = st.file_uploader("Upload PDF or Image", type=["png", "jpg", "jpeg", "pdf"])
-
-if uploaded_file:
-    filename = uploaded_file.name
-    file_bytes = uploaded_file.read()
-
-    st.subheader("⚙️ Processing with YOLO v8")
     
-    detector = YOLODetector() # Uses Config.model_path which is None in mock
+def main():
+    detector = load_detector()
+    ocr_processor = load_ocr_processor()
+    st.title("Legal Document Digitizer")
+    st.write("By Aryan Tandon and Umesh Tiwari")
 
-    detections = []
-    image_np_for_detection = None # Renamed to avoid conflict with `Image` import
+    # Sidebar for options
+    st.sidebar.title("Document Processing Options")
+
+    # View DB Section (Always Visible Downloads)
+    st.sidebar.subheader("📂 Saved OCR Results")
     try:
-        # Handle PDF and image files for initial loading into a processable image format
-        if uploaded_file.type == "application/pdf":
-            # For simplicity, process only the first page for detection in this combined mock.
-            doc = fitz.open(stream=file_bytes, filetype="pdf")
-            if doc.page_count > 0:
-                page = doc.load_page(0)
-                pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72)) # Render at 300 DPI
-                image_np_for_detection = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-                if pix.n == 4: # CMYK to RGB conversion if needed
-                    image_rgb = np.zeros((pix.height, pix.width, 3), dtype=np.uint8)
-                    image_rgb[:, :, 0] = image_np_for_detection[:, :, 0] * (1 - image_np_for_detection[:, :, 3] / 255.0)
-                    image_rgb[:, :, 1] = image_np_for_detection[:, :, 1] * (1 - image_np_for_detection[:, :, 3] / 255.0)
-                    image_rgb[:, :, 2] = image_np_for_detection[:, :, 2] * (1 - image_np_for_detection[:, :, 3] / 255.0)
-                    image_np_for_detection = image_rgb
-                st.info("Processing first page of PDF for detection.")
-            else:
-                st.warning("PDF has no pages to process.")
-                image_np_for_detection = None
-            doc.close()
-        else:
-            image_np_for_detection = np.array(Image.open(io.BytesIO(file_bytes)).convert("RGB"))
+        df = pd.read_sql_query("SELECT * FROM extractions ORDER BY timestamp DESC", conn)
+        if not df.empty:
+            st.sidebar.dataframe(df)
 
-        if image_np_for_detection is not None:
-            st.image(image_np_for_detection, caption="Uploaded Document (for detection)", use_column_width=True)
-            detections, _ = detector.detect(image_np_for_detection) # Use the image_np here
-            st.success("YOLO detection complete.")
-        else:
-            st.warning("Could not load image for detection.")
+            st.sidebar.download_button("⬇ Download as CSV", df.to_csv(index=False), file_name="ocr_results.csv")
 
+            txt_data = "\n\n".join([f"{row['filename']} ({row['timestamp']}):\n{row['extracted_text']}" for _, row in df.iterrows()])
+            st.sidebar.download_button("⬇ Download as TXT", txt_data, file_name="ocr_results.txt")
+        else:
+            st.sidebar.info("No saved OCR results found.")
     except Exception as e:
-        st.error(f"Error during document loading or YOLO detection: {e}")
-        logger.exception("Error during document loading or YOLO detection")
-        detections = []
-        image_np_for_detection = None
+        st.sidebar.error("Error reading from database.")
+        logger.exception(e)
 
-    # Step 1: Extract text from detections
-    combined_text = ""
-    if detections and image_np_for_detection is not None:
-        st.subheader("Text Extraction")
-        for det in detections:
-            if det.get("class") == "text":
-                try:
-                    ocr_results_for_det = preprocess_image(image_np_for_detection, det)
-                    for r in ocr_results_for_det:
-                        if "text" in r and r["text"].strip():
-                            st.text_area(f"Extracted Text (bbox: {det['bbox']})", r["text"], height=100)
-                            combined_text += r["text"] + "\n"
-                except Exception as e:
-                    st.warning(f"Error extracting text for a detection: {e}")
-                    logger.exception("Error during text extraction for a detection")
-    elif image_np_for_detection is None:
-        st.error("No image could be processed for text extraction.")
+    # ✅ NEW: Let user download raw SQLite DB
+    if os.path.exists("results.db"):
+        with open("results.db", "rb") as f:
+            st.sidebar.download_button("⬇ Download Database", f, file_name="results.db")
     else:
-        st.info("No text detections found in the document.")
+        st.sidebar.info("No database file found yet.")
 
-    # Step 2: LLM analysis + save to database
-    try:
-        if combined_text.strip():
-            st.subheader("🤖 LLM Analysis")
-            with st.spinner("Analyzing text with LLM..."):
-                llm_results = process_legal_text(combined_text)
+    # Language Selection
+    st.sidebar.subheader("Language Settings")
+    available_languages = get_supported_languages()
+    default_lang = "English"
 
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute(
-                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                (filename, combined_text, ts)
-            )
-            conn.commit()
-            st.success("✅ Saved OCR text to database.")
+    # Primary language selection
+    primary_lang = st.sidebar.selectbox(
+        "Primary Language",
+        options=list(available_languages.keys()),
+        index=list(available_languages.keys()).index(default_lang),
+        help="Select the main language of your document",
+    )
 
-            if llm_results and "error" not in llm_results:
-                st.json(llm_results)
-            else:
-                st.warning(llm_results.get("error", "LLM couldn't process this text correctly."))
-                logger.error(f"LLM processing failed: {llm_results.get('error', 'Unknown error')}")
-        else:
-            st.info("No textual content extracted for LLM analysis.")
-    except Exception as e:
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Additional languages selection
+    additional_langs = st.sidebar.multiselect(
+        "Additional Languages (Optional)",
+        options=[lang for lang in available_languages.keys() if lang != primary_lang],
+        help="Select additional languages if your document contains multiple languages",
+    )
+
+    # Combine selected languages for Tesseract
+    selected_langs = [primary_lang] + additional_langs
+    lang_codes = "+".join([available_languages[lang] for lang in selected_langs])
+
+    # PSM Selection
+    psm = st.sidebar.selectbox(
+        "Text Layout Detection",
+        options=[3, 4, 6, 11, 12],
+        index=0,
+        format_func=lambda x: {
+            3: "Automatic Detection",
+            4: "Single Column Layout",
+            6: "Single Text Block",
+            11: "Line by Line",
+            12: "Word by Word",
+        }[x],
+        help="Choose how the system should read your document's layout",
+    )
+
+    # Update OCR processor with selected language and PSM
+    ocr_processor.update_config(lang_codes, psm)
+
+    # Preprocessing options with better labels
+    st.sidebar.subheader("Image Enhancement Options")
+    apply_threshold = st.sidebar.checkbox(
+        "Sharpen Text", value=True, help="Improves text clarity by increasing contrast"
+    )
+    apply_deskew = st.sidebar.checkbox(
+        "Straighten Document", value=True, help="Corrects tilted or skewed documents"
+    )
+    apply_denoise = st.sidebar.checkbox(
+        "Remove Background Noise",
+        value=True,
+        help="Removes specks and background interference",
+    )
+    apply_contrast = st.sidebar.checkbox(
+        "Enhance Text Visibility", value=False, help="Boosts text brightness and contrast"
+    )
+
+    preprocessing_options = {
+        "apply_threshold": apply_threshold,
+        "apply_deskew": apply_deskew,
+        "apply_denoise": apply_denoise,
+        "apply_contrast": apply_contrast,
+    }
+
+    uploaded_file = st.file_uploader(
+        "Choose an image or PDF...", type=["jpg", "png", "jpeg", "pdf"]
+    )
+
+    if uploaded_file is not None:
         try:
-            cursor.execute(
-                "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
-                (filename, combined_text, ts)
-            )
-            conn.commit()
-            st.warning("LLM processing failed, but extracted text was saved to database.")
-        except Exception as db_e:
-            st.error(f"Failed to save to database after LLM error: {db_e}")
-        st.error(f"An error occurred during LLM analysis: {e}")
-        logger.exception("Error during LLM analysis")
+            if uploaded_file.type == "application/pdf":
+                # Add a progress bar
+                progress_bar = st.progress(0)
 
-# --- Sidebar with Downloads ---
-st.sidebar.header("📂 Saved OCR Entries")
-try:
-    df = pd.read_sql_query("SELECT * FROM extractions ORDER BY timestamp DESC", conn)
-    if not df.empty:
-        st.sidebar.dataframe(df)
+                try:
+                    # Use the improved PDF processing
+                    doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+                    total_pages = doc.page_count
 
-        st.sidebar.download_button("⬇ Download CSV", df.to_csv(index=False), file_name="ocr_results.csv", mime="text/csv")
-        
-        txt_data = "\n\n".join([
-            f"--- {row['filename']} [{row['timestamp']}] ---\n{row['extracted_text']}"
-            for _, row in df.iterrows()
-        ])
-        st.sidebar.download_button("⬇ Download TXT", txt_data, file_name="ocr_results.txt", mime="text/plain")
-        
-        if os.path.exists("results.db"):
-            with open("results.db", "rb") as f:
-                st.sidebar.download_button("⬇ Download DB", f.read(), file_name="results.db", mime="application/octet-stream")
-        else:
-            st.sidebar.info("Database file not found.")
-    else:
-        st.sidebar.info("No OCR entries yet.")
-except Exception as e:
-    st.sidebar.error(f"Error retrieving saved OCR entries: {e}")
-    logger.exception("Error retrieving saved OCR entries from database")
+                    for page_num in range(total_pages):
+                        # Update progress
+                        progress_bar.progress((page_num + 1) / total_pages)
+
+                        # Process one page at a time
+                        page = doc[page_num]
+                        image_np, error = process_pdf_page(page, dpi=300)
+
+                        if error:
+                            st.error(f"Error processing page {page_num + 1}: {error}")
+                            continue
+
+                        if image_np is None:
+                            continue
+
+                        # Display the processed page
+                        st.image(image_np, caption=f"PDF Page {page_num+1}", width=400)
+
+                        # Detect objects in the page
+                        detections = detector.detect(image_np)
+                        image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(
+                            image_np,
+                            detections,
+                            ocr_processor,
+                            page_num,
+                            preprocessing_options,
+                        )
+
+                        st.image(
+                            image_with_boxes,
+                            caption=f"Image with Detections and Labels (Page {page_num+1})",
+                            width=400,
+                        )
+
+                        st.subheader(f"Extracted Entities (Page {page_num+1})")
+                        entity_counter = 1
+
+                        # Display confidence scores
+                        st.write(f"## Confidence Scores (Page {page_num + 1}):")
+                        with st.container():
+                            confidence_dict = {}
+                            for detection in detections:
+                                if "class" in detection:
+                                    confidence_dict[detection["class"]] = detection["confidence"]
+
+                            st.write(f"1) Text: {confidence_dict.get('text', 'null')}")
+                            st.write(f"2) Table: {confidence_dict.get('table', 'null')}")
+                            st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")
+                            st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")
+
+                        # Display detected entities
+                        if text_images:
+                            st.write("Text:")
+                            for img in text_images:
+                                st.write(f"{entity_counter})")
+                                st.image(img, width=400)
+                                entity_counter += 1
+                        else:
+                            st.write(f"{entity_counter}) Text: Not Detected")
+                            entity_counter += 1
+
+                        if table_images:
+                            st.write("Tables:")
+                            for img in table_images:
+                                st.write(f"{entity_counter})")
+                                st.image(img, width=400)
+                                entity_counter += 1
+                        else:
+                            st.write(f"{entity_counter}) Tables: Not Detected")
+                            entity_counter += 1
+
+                        if stamp_images:
+                            st.write("Stamps:")
+                            for img in stamp_images:
+                                st.write(f"{entity_counter})")
+                                st.image(img, width=400)
+                                entity_counter += 1
+                        else:
+                            st.write(f"{entity_counter}) Stamps: Not Detected")
+                            entity_counter += 1
+
+                        if signature_images:
+                            st.write("Signatures:")
+                            for img in signature_images:
+                                st.write(f"{entity_counter})")
+                                st.image(img, width=400)
+                                entity_counter += 1
+                        else:
+                            st.write(f"{entity_counter}) Signatures: Not Detected")
+                            entity_counter += 1
+
+                        try:
+                            if combined_text.strip():
+                                st.subheader("LLM Analysis")
+                                with st.spinner("Analyzing text with LLM..."):
+                                    llm_results = process_legal_text(combined_text)
+
+                                    # ✅ Save to DB regardless of LLM result
+                                    filename = uploaded_file.name + f"_page_{page_num+1}"
+                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    cursor.execute(
+                                        "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                        (filename, combined_text, timestamp)
+                                    )
+                                    conn.commit()
+                                    st.success(f"✅ Page {page_num+1} saved to database.")
+
+                                    if llm_results and "error" not in llm_results:
+                                        st.json(llm_results)
+                                    else:
+                                        st.warning("LLM couldn't process this page correctly.")
+                            else:
+                                st.write("No Text Detected")
+                        except Exception as e:
+                            st.warning("LLM failed, but data is still saved.")
+                            st.error(str(e))
+
+                        # Clear lists for the next page
+                        text_images = []
+                        table_images = []
+                        stamp_images = []
+                        signature_images = []
+
+                        # Clear page from memory
+                        page = None
+
+                    # Close the document
+                    doc.close()
+
+                except Exception as e:
+                    st.error(f"Error processing PDF: {e}")
+                    logger.exception(f"Error processing PDF: {e}")
+
+                finally:
+                    # Clear the progress bar
+                    progress_bar.empty()
+
+            else:  # It's an image
+                image = Image.open(uploaded_file).convert("RGB")
+                image = np.array(image)
+                st.image(image, caption="Uploaded Image", width=400)
+
+                detections = detector.detect(image)
+                image_with_boxes, text_images, table_images, stamp_images, signature_images = process_image(
+                    image, detections, ocr_processor, preprocessing_options
+                )
+
+                st.image(
+                    image_with_boxes, caption="Image with Detections and Labels", width=400
+                )
+
+                st.subheader("Extracted Entities")
+                entity_counter = 1
+
+                st.write("## Confidence Scores:")
+                with st.container():
+                    confidence_dict = {}
+                    for detection in detections:
+                        if "class" in detection:
+                            confidence_dict[detection["class"]] = detection["confidence"]
+
+                    st.write(f"1) Text: {confidence_dict.get('text', 'null')}")
+                    st.write(f"2) Table: {confidence_dict.get('table', 'null')}")
+                    st.write(f"3) Stamp: {confidence_dict.get('stamp', 'null')}")
+                    st.write(f"4) Signature: {confidence_dict.get('signature', 'null')}")
+
+                if text_images:
+                    st.write("Text:")
+                    for img in text_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img, width=400)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Text: Not Detected")
+                    entity_counter += 1
+
+                if table_images:
+                    st.write("Tables:")
+                    for img in table_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img, width=400)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Tables: Not Detected")
+                    entity_counter += 1
+
+                if stamp_images:
+                    st.write("Stamps:")
+                    for img in stamp_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img, width=400)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Stamps: Not Detected")
+                    entity_counter += 1
+
+                if signature_images:
+                    st.write("Signatures:")
+                    for img in signature_images:
+                        st.write(f"{entity_counter})")
+                        st.image(img, width=400)
+                        entity_counter += 1
+                else:
+                    st.write(f"{entity_counter}) Signatures: Not Detected")
+                    entity_counter += 1
+
+                try:
+                        try:
+                            if combined_text.strip():
+                                st.subheader("LLM Analysis")
+                                with st.spinner("Analyzing text with LLM..."):
+                                    llm_results = process_legal_text(combined_text)
+
+                                    # ✅ Save to DB regardless of LLM result
+                                    filename = uploaded_file.name + f"_page_{page_num+1}"
+                                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    cursor.execute(
+                                        "INSERT INTO extractions (filename, extracted_text, timestamp) VALUES (?, ?, ?)",
+                                        (filename, combined_text, timestamp)
+                                    )
+                                    conn.commit()
+                                    st.success(f"✅ Page {page_num+1} saved to database.")
+
+                                    if llm_results and "error" not in llm_results:
+                                        st.json(llm_results)
+                                    else:
+                                        st.warning("LLM couldn't process this page correctly.")
+                            else:
+                                st.write("No Text Detected")
+                        except Exception as e:
+                            st.warning("LLM failed, but data is still saved.")
+                            st.error(str(e))
+
+                except Exception as e:
+                    st.error(f"An error occurred during image text extraction: {e}")
+                    logger.exception(f"An error occurred during image text extraction: {e}")
+
+        except Exception as e:
+            st.error(f"An outer error occurred: {e}")
+            logger.exception(f"An outer error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
